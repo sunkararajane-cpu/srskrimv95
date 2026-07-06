@@ -555,6 +555,19 @@ function VibeCard({
     return () => {
       if (tapTimeout.current) clearTimeout(tapTimeout.current);
       if (overlayTimeout.current) clearTimeout(overlayTimeout.current);
+      if (audioRef.current) {
+        try {
+          audioRef.current.pause();
+          audioRef.current.src = "";
+        } catch (e) {}
+        audioRef.current = null;
+      }
+      if (videoRef.current) {
+        try {
+          videoRef.current.pause();
+          videoRef.current.src = "";
+        } catch (e) {}
+      }
     };
   }, []);
 
@@ -2213,7 +2226,9 @@ export default function VibesScreen() {
       {/* Vibe Cards — full-screen snap scroll */}
       <div 
         onScroll={handleScroll}
-        className="w-full h-full overflow-y-auto no-scrollbar snap-y snap-mandatory snap-scroll-container scroll-smooth"
+        className={`w-full h-full snap-y snap-mandatory snap-scroll-container scroll-smooth ${
+          isCreateOpen ? 'overflow-hidden pointer-events-none' : 'overflow-y-auto no-scrollbar'
+        }`}
       >
         {vibes.map((vibe, i) => (
           <div
@@ -2222,7 +2237,7 @@ export default function VibesScreen() {
           >
             <VibeCard
               vibe={vibe}
-              isActive={i === currentIdx}
+              isActive={i === currentIdx && !isCreateOpen}
               muted={muted}
               onToggleMute={() => setMuted(m => !m)}
               onNext={goNext}
