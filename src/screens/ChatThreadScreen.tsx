@@ -1086,23 +1086,49 @@ export default function ChatThreadScreen() {
                  </TransformWrapper>
                )}
                {mediaViewer.type === 'photo' && (
-                 <div 
-                   className="w-full flex-1 flex items-center justify-center text-[150px] relative"
-                   style={{ backgroundColor: mediaViewer.photo.color, filter: mediaViewer.photo.filter === 'Vivid' ? 'saturate(200%)' : mediaViewer.photo.filter === 'Cool' ? 'hue-rotate(90deg)' : mediaViewer.photo.filter === 'Warm' ? 'sepia(50%)' : 'none' }}
-                 >
-                   {mediaViewer.photo.emoji}
-                 </div>
+                 mediaViewer.photo.uri ? (
+                   <TransformWrapper>
+                     <TransformComponent wrapperClass="!w-screen !h-screen flex items-center justify-center relative">
+                       <img 
+                         src={mediaViewer.photo.uri} 
+                         alt="Viewer" 
+                         className="max-w-full max-h-[85vh] object-contain select-none cursor-zoom-in" 
+                         style={{ filter: mediaViewer.photo.filter === 'Vivid' ? 'saturate(200%)' : mediaViewer.photo.filter === 'Cool' ? 'hue-rotate(90deg)' : mediaViewer.photo.filter === 'Warm' ? 'sepia(50%)' : 'none' }}
+                       />
+                     </TransformComponent>
+                   </TransformWrapper>
+                 ) : (
+                   <div 
+                     className="w-full flex-1 flex items-center justify-center text-[150px] relative"
+                     style={{ backgroundColor: mediaViewer.photo.color, filter: mediaViewer.photo.filter === 'Vivid' ? 'saturate(200%)' : mediaViewer.photo.filter === 'Cool' ? 'hue-rotate(90deg)' : mediaViewer.photo.filter === 'Warm' ? 'sepia(50%)' : 'none' }}
+                   >
+                     {mediaViewer.photo.emoji}
+                   </div>
+                 )
                )}
                {mediaViewer.type === 'video' && (
-                 <div 
-                   className="w-full flex-1 flex items-center justify-center text-[150px] relative"
-                   style={{ backgroundColor: mediaViewer.video.color }}
-                 >
-                   {mediaViewer.video.emoji}
-                   <div className="absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none">
-                     <Play fill="white" size={80} className="text-white opacity-80" />
+                 mediaViewer.video.uri ? (
+                   <div className="w-full flex-1 flex items-center justify-center relative max-h-[85vh]">
+                     <video 
+                       src={mediaViewer.video.uri} 
+                       controls 
+                       autoPlay 
+                       loop 
+                       playsInline
+                       className="max-w-full max-h-full object-contain" 
+                     />
                    </div>
-                 </div>
+                 ) : (
+                   <div 
+                     className="w-full flex-1 flex items-center justify-center text-[150px] relative"
+                     style={{ backgroundColor: mediaViewer.video.color }}
+                   >
+                     {mediaViewer.video.emoji}
+                     <div className="absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none">
+                       <Play fill="white" size={80} className="text-white opacity-80" />
+                     </div>
+                   </div>
+                 )
                )}
             </div>
             
