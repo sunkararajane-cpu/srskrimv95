@@ -33,6 +33,17 @@ const CONTACTS_MAP: Record<string, { name: string, online: boolean }> = {
   "c8": { name: "Zara Khan", online: true }
 };
 
+const ALL_MOCK_CONTACTS = [
+  { id: "c1", name: "Ananya K", avatar: "👩", online: true },
+  { id: "c2", name: "Arjun Mehta", avatar: "👨", online: false },
+  { id: "c3", name: "Kiran Reddy", avatar: "🧑", online: true },
+  { id: "c4", name: "Priya Sharma", avatar: "👩", online: true },
+  { id: "c5", name: "Rahul Verma", avatar: "👨", online: false },
+  { id: "c6", name: "Sneha Patel", avatar: "👩", online: false },
+  { id: "c7", name: "Vikram S", avatar: "👨", online: false },
+  { id: "c8", name: "Zara Khan", avatar: "👩", online: true }
+];
+
 const MOCK_GROUP = {
   name: "Telugu Squad 🔥",
   avatar: "🔥",
@@ -336,6 +347,15 @@ export default function GroupInfoScreen() {
 
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
+  const [showEditGroup, setShowEditGroup] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editAvatar, setEditAvatar] = useState("");
+
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+  const [addMemberSearch, setAddMemberSearch] = useState("");
+
   // Tab Content Renders
   const renderInfoTab = () => (
     <div className="flex flex-col">
@@ -369,8 +389,12 @@ export default function GroupInfoScreen() {
             Members ({members.length})
           </span>
           <button
-            onClick={() => setActiveTab("members")}
-            className="text-[#00F0FF] text-xs font-medium flex items-center gap-1"
+            onClick={() => {
+              setSelectedContactIds([]);
+              setAddMemberSearch("");
+              setShowAddMember(true);
+            }}
+            className="text-[#00F0FF] text-xs font-medium flex items-center gap-1 hover:opacity-85"
           >
             <UserPlus size={14} /> Add
           </button>
@@ -492,7 +516,14 @@ export default function GroupInfoScreen() {
         <h4 className="text-white/60 text-xs font-bold uppercase tracking-wider">
           Members ({members.length})
         </h4>
-        <button className="text-[#00F0FF] text-xs font-bold px-3 py-1.5 rounded-full bg-[#00F0FF]/10 flex items-center gap-1">
+        <button 
+          onClick={() => {
+            setSelectedContactIds([]);
+            setAddMemberSearch("");
+            setShowAddMember(true);
+          }}
+          className="text-[#00F0FF] text-xs font-bold px-3 py-1.5 rounded-full bg-[#00F0FF]/10 flex items-center gap-1 hover:opacity-85 active:scale-95 transition-all"
+        >
           <UserPlus size={14} /> Add
         </button>
       </div>
@@ -681,9 +712,19 @@ export default function GroupInfoScreen() {
           </button>
           <h1 className="text-white font-bold text-lg">Group Info</h1>
         </div>
-        <button className="text-[#00F0FF] text-sm font-bold flex items-center gap-1">
-          <Edit2 size={14} /> Edit
-        </button>
+        {group.isAdmin && (
+          <button 
+            onClick={() => {
+              setEditName(group.name);
+              setEditDescription(group.description);
+              setEditAvatar(group.avatar);
+              setShowEditGroup(true);
+            }}
+            className="text-[#00F0FF] text-sm font-bold flex items-center gap-1 hover:opacity-80 active:scale-95 transition-all"
+          >
+            <Edit2 size={14} /> Edit
+          </button>
+        )}
       </header>
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
@@ -1052,6 +1093,247 @@ export default function GroupInfoScreen() {
                   Unmute Notifications
                 </button>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Group Modal */}
+      <AnimatePresence>
+        {showEditGroup && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => setShowEditGroup(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative z-50 w-full max-w-md bg-[#1A1A24] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-white font-bold text-lg">Edit Group Info</h3>
+                <button
+                  onClick={() => setShowEditGroup(false)}
+                  className="text-white/50 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Group Avatar Picker */}
+                <div>
+                  <label className="text-white/60 text-xs font-bold uppercase tracking-wider block mb-2">
+                    Group Avatar
+                  </label>
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                    {['🔥', '⚡', '👑', '🎮', '🏏', '💃', '🌍', '🎵', '🚀', '💜', '🌟', '🎭', '🤝'].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setEditAvatar(emoji)}
+                        className={`w-12 h-12 rounded-xl shrink-0 flex items-center justify-center text-2xl transition-all ${
+                          editAvatar === emoji
+                            ? "bg-[#00F0FF]/20 border-2 border-[#00F0FF] scale-110 shadow-lg shadow-[#00F0FF]/20"
+                            : "bg-white/5 border border-white/10 hover:bg-white/10"
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Group Name */}
+                <div>
+                  <label className="text-white/60 text-xs font-bold uppercase tracking-wider block mb-2">
+                    Group Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Enter group name"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#00F0FF] transition-colors"
+                  />
+                </div>
+
+                {/* Group Description */}
+                <div>
+                  <label className="text-white/60 text-xs font-bold uppercase tracking-wider block mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    placeholder="Enter group description..."
+                    rows={3}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#00F0FF] transition-colors resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowEditGroup(false)}
+                  className="flex-1 bg-white/5 hover:bg-white/10 text-white font-medium py-3 rounded-xl transition-colors border border-white/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!editName.trim()) return;
+                    setGroup((prev: any) => ({
+                      ...prev,
+                      name: editName,
+                      description: editDescription,
+                      avatar: editAvatar
+                    }));
+                    setShowEditGroup(false);
+                  }}
+                  className="flex-1 bg-gradient-to-r from-[#B026FF] to-[#00F0FF] text-white font-bold py-3 rounded-xl shadow-lg shadow-[#B026FF]/20 active:scale-95 transition-transform"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Member Modal */}
+      <AnimatePresence>
+        {showAddMember && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => setShowAddMember(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative z-50 w-full max-w-md bg-[#1A1A24] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col h-[80vh] max-h-[600px]"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-white font-bold text-lg">Add Members</h3>
+                <button
+                  onClick={() => setShowAddMember(false)}
+                  className="text-white/50 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Search contacts input */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search contacts..."
+                  value={addMemberSearch}
+                  onChange={(e) => setAddMemberSearch(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#00F0FF] transition-colors"
+                />
+              </div>
+
+              {/* Contacts List */}
+              <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-1">
+                {(() => {
+                  const availableContacts = ALL_MOCK_CONTACTS.filter(
+                    contact => !members.some((m: any) => m.id === contact.id)
+                  ).filter(contact => 
+                    contact.name.toLowerCase().includes(addMemberSearch.toLowerCase())
+                  );
+
+                  if (availableContacts.length === 0) {
+                    return (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <span className="text-3xl mb-2">👥</span>
+                        <p className="text-white/40 text-sm">No contacts available to add</p>
+                      </div>
+                    );
+                  }
+
+                  return availableContacts.map((contact) => {
+                    const isSelected = selectedContactIds.includes(contact.id);
+                    return (
+                      <button
+                        key={contact.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedContactIds(prev => prev.filter(id => id !== contact.id));
+                          } else {
+                            setSelectedContactIds(prev => [...prev, contact.id]);
+                          }
+                        }}
+                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all border ${
+                          isSelected
+                            ? "bg-[#00F0FF]/10 border-[#00F0FF]/30"
+                            : "bg-white/5 border-transparent hover:bg-white/10"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg relative">
+                            {contact.avatar}
+                            {contact.online && (
+                              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#1A1A24] rounded-full" />
+                            )}
+                          </div>
+                          <span className="text-white text-sm font-medium text-left">
+                            {contact.name}
+                          </span>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+                          isSelected
+                            ? "bg-[#00F0FF] border-[#00F0FF] text-black"
+                            : "border-white/20"
+                        }`}>
+                          {isSelected && <span className="text-xs font-bold">✓</span>}
+                        </div>
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowAddMember(false)}
+                  className="flex-1 bg-white/5 hover:bg-white/10 text-white font-medium py-3 rounded-xl transition-colors border border-white/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={selectedContactIds.length === 0}
+                  onClick={() => {
+                    const newMembersToAdd = selectedContactIds.map(id => {
+                      const contact = ALL_MOCK_CONTACTS.find(c => c.id === id);
+                      return {
+                        id: id,
+                        name: contact ? contact.name : id,
+                        role: "Member",
+                        isMe: false,
+                        isOnline: contact ? contact.online : false
+                      };
+                    });
+                    setMembers(prev => [...prev, ...newMembersToAdd]);
+                    setShowAddMember(false);
+                    setSelectedContactIds([]);
+                  }}
+                  className={`flex-1 text-white font-bold py-3 rounded-xl shadow-lg transition-all ${
+                    selectedContactIds.length > 0
+                      ? "bg-gradient-to-r from-[#B026FF] to-[#00F0FF] shadow-[#B026FF]/20 active:scale-95 cursor-pointer"
+                      : "bg-white/10 text-white/40 cursor-not-allowed"
+                  }`}
+                >
+                  Add {selectedContactIds.length > 0 ? `(${selectedContactIds.length})` : ""}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
