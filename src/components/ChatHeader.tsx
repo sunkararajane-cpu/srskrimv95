@@ -80,9 +80,9 @@ export function ChatHeader({
           </button>
           
           <div 
-            className={`flex items-center gap-3 ${onProfileClick && !isGroup ? 'cursor-pointer hover:opacity-85 transition-opacity' : ''}`}
+            className={`flex items-center gap-3 ${onProfileClick ? 'cursor-pointer hover:opacity-85 transition-opacity' : ''}`}
             onClick={() => {
-              if (onProfileClick && !isGroup) {
+              if (onProfileClick) {
                 onProfileClick();
               }
             }}

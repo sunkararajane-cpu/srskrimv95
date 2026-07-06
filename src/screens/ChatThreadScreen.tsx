@@ -762,7 +762,9 @@ export default function ChatThreadScreen() {
         isGroup={isGroupChat}
         onGroupSettingsClick={() => setShowGroupSettings(true)}
         onProfileClick={() => {
-          if (!isGroupChat && recipientUser.username) {
+          if (isGroupChat) {
+            navigate(`/group/info?id=${chatId}`);
+          } else if (recipientUser.username) {
             navigate(`/profile/${recipientUser.username}`);
           }
         }}

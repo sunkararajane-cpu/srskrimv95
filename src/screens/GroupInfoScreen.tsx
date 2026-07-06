@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowLeft,
@@ -20,6 +20,18 @@ import {
   X,
 } from "lucide-react";
 import { CHAT_THEMES } from "../constants/themes";
+import { MOCK_CHATS } from "../lib/mock/mockChatDirectory";
+
+const CONTACTS_MAP: Record<string, { name: string, online: boolean }> = {
+  "c1": { name: "Ananya K", online: true },
+  "c2": { name: "Arjun Mehta", online: false },
+  "c3": { name: "Kiran Reddy", online: true },
+  "c4": { name: "Priya Sharma", online: true },
+  "c5": { name: "Rahul Verma", online: false },
+  "c6": { name: "Sneha Patel", online: false },
+  "c7": { name: "Vikram S", online: false },
+  "c8": { name: "Zara Khan", online: true }
+};
 
 const MOCK_GROUP = {
   name: "Telugu Squad 🔥",
@@ -89,10 +101,227 @@ const MOCK_VIBES = [
 
 export default function GroupInfoScreen() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const groupId = searchParams.get('id');
+
   const [activeTab, setActiveTab] = useState<
     "info" | "members" | "polls" | "vibes" | "announcements"
   >("info");
-  const [members, setMembers] = useState(MOCK_GROUP.members);
+
+  const [group, setGroup] = useState<any>(() => {
+    // 1. Try custom groups from localStorage
+    if (groupId && groupId.startsWith('group_')) {
+      try {
+        const storedStr = localStorage.getItem('skrimchat_custom_groups');
+        if (storedStr) {
+          const customGroups = JSON.parse(storedStr);
+          const found = customGroups.find((g: any) => g.id === groupId);
+          if (found) {
+            let resolvedMembers = found.membersWithRoles;
+            if (!resolvedMembers) {
+              const creatorMember = {
+                id: "me",
+                name: "rajani (You)",
+                role: "Admin",
+                isMe: true,
+                isOnline: true
+              };
+              const mappedMembers = (found.members || []).map((mid: string) => {
+                const contact = CONTACTS_MAP[mid] || { name: mid, online: false };
+                return {
+                  id: mid,
+                  name: contact.name,
+                  role: "Member",
+                  isMe: false,
+                  isOnline: contact.online
+                };
+              });
+              resolvedMembers = [creatorMember, ...mappedMembers];
+            }
+            return {
+              id: found.id,
+              name: found.name,
+              avatar: found.avatar || "💬",
+              description: found.description || '"No description provided."',
+              createdBy: found.createdBy || "rajani",
+              memberCount: resolvedMembers.length,
+              members: resolvedMembers,
+              isAdmin: true
+            };
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // 2. Try default mock groups from MOCK_CHATS
+    if (groupId) {
+      const matchedMock = MOCK_CHATS.find((c) => c.id === groupId);
+      if (matchedMock) {
+        let defaultMembers = [
+          { id: "me", name: "rajani (You)", role: "Admin", isMe: true, isOnline: true },
+          { id: "m2", name: "Priya Sharma", role: "Admin", isMe: false, isOnline: true },
+          { id: "m3", name: "Rahul Verma", role: "Member", isMe: false, isOnline: false },
+          { id: "m4", name: "Kiran Reddy", role: "Member", isMe: false, isOnline: false },
+        ];
+        if (groupId === "7") {
+          defaultMembers = [
+            { id: "me", name: "rajani (You)", role: "Member", isMe: true, isOnline: true },
+            { id: "m2", name: "Priya Sharma", role: "Admin", isMe: false, isOnline: true },
+            { id: "m3", name: "Rahul Verma", role: "Member", isMe: false, isOnline: false },
+            { id: "m4", name: "Sneha Patel", role: "Member", isMe: false, isOnline: false },
+          ];
+        }
+        return {
+          id: matchedMock.id,
+          name: matchedMock.name,
+          avatar: matchedMock.avatar || "💬",
+          description: groupId === "3" ? '"Telugu vibes only! 🌟"' : '"Good vibes only! ✨"',
+          createdBy: groupId === "3" ? "rajani" : "Priya",
+          memberCount: defaultMembers.length,
+          members: defaultMembers,
+          isAdmin: groupId === "3"
+        };
+      }
+    }
+
+    // Default Fallback
+    return {
+      id: "3",
+      name: MOCK_GROUP.name,
+      avatar: MOCK_GROUP.avatar,
+      description: MOCK_GROUP.description,
+      createdBy: MOCK_GROUP.createdBy,
+      memberCount: MOCK_GROUP.memberCount,
+      members: MOCK_GROUP.members,
+      isAdmin: MOCK_GROUP.isAdmin
+    };
+  });
+
+  const [members, setMembers] = useState(group.members);
+
+  // Sync state if groupId changes
+  useEffect(() => {
+    let resolvedGroup = {
+      id: "3",
+      name: MOCK_GROUP.name,
+      avatar: MOCK_GROUP.avatar,
+      description: MOCK_GROUP.description,
+      createdBy: MOCK_GROUP.createdBy,
+      memberCount: MOCK_GROUP.memberCount,
+      members: MOCK_GROUP.members,
+      isAdmin: MOCK_GROUP.isAdmin
+    };
+
+    if (groupId) {
+      if (groupId.startsWith('group_')) {
+        try {
+          const storedStr = localStorage.getItem('skrimchat_custom_groups');
+          if (storedStr) {
+            const customGroups = JSON.parse(storedStr);
+            const found = customGroups.find((g: any) => g.id === groupId);
+            if (found) {
+              let resolvedMembers = found.membersWithRoles;
+              if (!resolvedMembers) {
+                const creatorMember = {
+                  id: "me",
+                  name: "rajani (You)",
+                  role: "Admin",
+                  isMe: true,
+                  isOnline: true
+                };
+                const mappedMembers = (found.members || []).map((mid: string) => {
+                  const contact = CONTACTS_MAP[mid] || { name: mid, online: false };
+                  return {
+                    id: mid,
+                    name: contact.name,
+                    role: "Member",
+                    isMe: false,
+                    isOnline: contact.online
+                  };
+                });
+                resolvedMembers = [creatorMember, ...mappedMembers];
+              }
+              resolvedGroup = {
+                id: found.id,
+                name: found.name,
+                avatar: found.avatar || "💬",
+                description: found.description || '"No description provided."',
+                createdBy: found.createdBy || "rajani",
+                memberCount: resolvedMembers.length,
+                members: resolvedMembers,
+                isAdmin: true
+              };
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      } else {
+        const matchedMock = MOCK_CHATS.find((c) => c.id === groupId);
+        if (matchedMock) {
+          let defaultMembers = [
+            { id: "me", name: "rajani (You)", role: "Admin", isMe: true, isOnline: true },
+            { id: "m2", name: "Priya Sharma", role: "Admin", isMe: false, isOnline: true },
+            { id: "m3", name: "Rahul Verma", role: "Member", isMe: false, isOnline: false },
+            { id: "m4", name: "Kiran Reddy", role: "Member", isMe: false, isOnline: false },
+          ];
+          if (groupId === "7") {
+            defaultMembers = [
+              { id: "me", name: "rajani (You)", role: "Member", isMe: true, isOnline: true },
+              { id: "m2", name: "Priya Sharma", role: "Admin", isMe: false, isOnline: true },
+              { id: "m3", name: "Rahul Verma", role: "Member", isMe: false, isOnline: false },
+              { id: "m4", name: "Sneha Patel", role: "Member", isMe: false, isOnline: false },
+            ];
+          }
+          resolvedGroup = {
+            id: matchedMock.id,
+            name: matchedMock.name,
+            avatar: matchedMock.avatar || "💬",
+            description: groupId === "3" ? '"Telugu vibes only! 🌟"' : '"Good vibes only! ✨"',
+            createdBy: groupId === "3" ? "rajani" : "Priya",
+            memberCount: defaultMembers.length,
+            members: defaultMembers,
+            isAdmin: groupId === "3"
+          };
+        }
+      }
+    }
+
+    setGroup(resolvedGroup);
+    setMembers(resolvedGroup.members);
+  }, [groupId]);
+
+  // Save changes to custom group when members change
+  useEffect(() => {
+    if (groupId && groupId.startsWith('group_')) {
+      try {
+        const storedStr = localStorage.getItem('skrimchat_custom_groups');
+        if (storedStr) {
+          const customGroups = JSON.parse(storedStr);
+          const updatedGroups = customGroups.map((g: any) => {
+            if (g.id === groupId) {
+              return {
+                ...g,
+                membersWithRoles: members
+              };
+            }
+            return g;
+          });
+          localStorage.setItem('skrimchat_custom_groups', JSON.stringify(updatedGroups));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    setGroup((prev: any) => ({
+      ...prev,
+      members: members,
+      memberCount: members.length
+    }));
+  }, [members, groupId]);
+
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [showMemberActions, setShowMemberActions] = useState(false);
   const [showConfirmAction, setShowConfirmAction] = useState<null | {
@@ -178,7 +407,7 @@ export default function GroupInfoScreen() {
       </div>
 
       {/* Invite Link */}
-      {MOCK_GROUP.isAdmin && (
+      {group.isAdmin && (
         <div className="bg-[#141414] border-y border-white/5 py-4 px-4 mb-4">
           <div className="flex justify-between items-center mb-3">
             <span className="text-white/60 text-xs font-bold uppercase tracking-wider">
@@ -247,7 +476,7 @@ export default function GroupInfoScreen() {
           <span className="w-6 opacity-60">🚪</span>
           <span className="text-sm font-medium">Exit Group</span>
         </button>
-        {MOCK_GROUP.isAdmin && (
+        {group.isAdmin && (
           <button className="w-full flex items-center px-4 py-3 text-red-500 hover:bg-white/5 transition-colors mt-2">
             <span className="w-6 opacity-60">🗑️</span>
             <span className="text-sm font-medium">Delete Group</span>
@@ -460,20 +689,24 @@ export default function GroupInfoScreen() {
       <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
         {/* Identity Section */}
         <div className="flex flex-col items-center pt-8 pb-6 bg-[#0A0A0C]">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-500 to-red-500 border border-white/10 flex items-center justify-center text-5xl mb-4 shadow-lg shadow-orange-500/20">
-            {MOCK_GROUP.avatar}
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-500 to-red-500 border border-white/10 flex items-center justify-center text-5xl mb-4 shadow-lg shadow-orange-500/20 overflow-hidden">
+            {group.avatar.startsWith('http') ? (
+              <img src={group.avatar} alt={group.name} className="w-full h-full object-cover" />
+            ) : (
+              group.avatar
+            )}
           </div>
           <h2 className="text-white text-xl font-bold text-center flex items-center justify-center gap-2 mb-1">
-            {MOCK_GROUP.name}
+            {group.name}
           </h2>
           <div className="text-white/50 text-sm mb-2">
-            Group · {MOCK_GROUP.memberCount} members
+            Group · {group.memberCount} members
           </div>
           <div className="text-white/40 text-xs mb-4">
-            Created by {MOCK_GROUP.createdBy}
+            Created by {group.createdBy}
           </div>
           <p className="text-white/90 text-sm px-8 text-center italic">
-            {MOCK_GROUP.description}
+            {group.description}
           </p>
         </div>
 
@@ -573,7 +806,7 @@ export default function GroupInfoScreen() {
                   <User size={18} className="text-gray-400" /> View Profile
                 </button>
 
-                {MOCK_GROUP.isAdmin && (
+                {group.isAdmin && (
                   <>
                     <div className="h-px w-full bg-white/5 my-2" />
                     {selectedMember.role !== "Admin" && (
@@ -610,7 +843,7 @@ export default function GroupInfoScreen() {
                   </>
                 )}
 
-                {!MOCK_GROUP.isAdmin && (
+                {!group.isAdmin && (
                   <button className="w-full bg-white/5 rounded-xl px-4 py-3.5 text-red-500 flex items-center gap-3 hover:bg-red-500/10 transition border border-transparent hover:border-red-500/30">
                     <Shield size={18} /> Block
                   </button>
@@ -677,7 +910,7 @@ export default function GroupInfoScreen() {
                   </div>
                   <h3 className="text-white font-bold text-lg mb-2">
                     Remove {showConfirmAction.member.name.split(" ")[0]} from{" "}
-                    {MOCK_GROUP.name}?
+                    {group.name}?
                   </h3>
                   <div className="flex w-full gap-3 mt-4">
                     <button
@@ -725,7 +958,7 @@ export default function GroupInfoScreen() {
                 <LogOut size={24} />
               </div>
               <h3 className="text-white font-bold text-lg mb-2">
-                Leave {MOCK_GROUP.name}?
+                Leave {group.name}?
               </h3>
               <p className="text-white/60 text-sm mb-6">
                 You won't receive messages anymore.
