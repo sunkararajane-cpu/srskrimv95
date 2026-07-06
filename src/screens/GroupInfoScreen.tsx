@@ -523,6 +523,10 @@ export default function GroupInfoScreen() {
     setPolls(prev => prev.filter(p => p.id !== pollId));
   };
 
+  const handleDeleteAnnouncement = (annId: string) => {
+    setAnnouncements(prev => prev.filter(a => a.id !== annId));
+  };
+
   const [announcements, setAnnouncements] = useState<any[]>(() => {
     try {
       const stored = localStorage.getItem(`group_announcements_${groupId || 'default'}`);
@@ -1216,10 +1220,21 @@ export default function GroupInfoScreen() {
         announcements.map((ann, i) => (
           <div
             key={ann.id}
-            className={`bg-[#1A1A2A] border-t-[3px] rounded-xl overflow-hidden shadow-lg p-4 ${
+            className={`bg-[#1A1A2A] border-t-[3px] rounded-xl overflow-hidden shadow-lg p-4 relative ${
               i === 0 ? "border-[#B026FF]" : "border-white/20 opacity-90"
             }`}
           >
+            {/* Admin Delete Action */}
+            {group.isAdmin && (
+              <button
+                onClick={() => handleDeleteAnnouncement(ann.id)}
+                className="absolute top-4 right-4 text-white/30 hover:text-red-400 p-1.5 hover:bg-white/5 rounded-lg transition-all"
+                title="Delete Announcement"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+
             <div
               className={`text-[11px] font-black tracking-widest flex items-center gap-1.5 uppercase mb-3 ${
                 i === 0 ? "text-[#B026FF]" : "text-white/50"

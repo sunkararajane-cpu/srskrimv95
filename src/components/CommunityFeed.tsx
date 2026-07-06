@@ -145,14 +145,65 @@ export function CommunityFeed({
       : isAdmin || userRole === "moderator";
 
   const [activeFilter, setActiveFilter] = useState("all");
-  const [posts, setPosts] = useState(INITIAL_FEED);
+  const [posts, setPosts] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem(`world_posts_${world.id || "default"}`);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return INITIAL_FEED;
+  });
+
+  const [scheduledPosts, setScheduledPosts] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem(`world_scheduled_posts_${world.id || "default"}`);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [];
+  });
+
   const [isComposing, setIsComposing] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("Post published successfully!");
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [activeSharePost, setActiveSharePost] = useState<any>(null);
   const handleSharePost = (post: any) => {
     setActiveSharePost(post);
   };
+
+  // Persist posts
+  useEffect(() => {
+    try {
+      localStorage.setItem(`world_posts_${world.id || "default"}`, JSON.stringify(posts));
+    } catch {}
+  }, [posts, world.id]);
+
+  // Persist scheduledPosts
+  useEffect(() => {
+    try {
+      localStorage.setItem(`world_scheduled_posts_${world.id || "default"}`, JSON.stringify(scheduledPosts));
+    } catch {}
+  }, [scheduledPosts, world.id]);
+
+  // Check for due scheduled posts
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const due = scheduledPosts.filter(sp => sp.scheduledFor && new Date(sp.scheduledFor) <= now);
+      if (due.length > 0) {
+        // Move due posts to active posts
+        const activeDue = due.map(sp => {
+          const { scheduledFor, ...rest } = sp;
+          return { ...rest, id: `p${Date.now()}_${Math.random()}`, time: "Just now" };
+        });
+        setPosts(prev => [...activeDue, ...prev]);
+        setScheduledPosts(prev => prev.filter(sp => !sp.scheduledFor || new Date(sp.scheduledFor) > now));
+        setToastMessage("A scheduled post is now live!");
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [scheduledPosts]);
 
   const filteredPosts = posts.filter((p) => {
     if (activeFilter === "hot") return p.sparks >= 50 || p.hot;
@@ -171,7 +222,14 @@ export function CommunityFeed({
   });
 
   const handlePost = (newPost: any) => {
-    setPosts([{ ...newPost, id: `p${Date.now()}` }, ...posts]);
+    const postWithId = { ...newPost, id: `p${Date.now()}` };
+    if (newPost.scheduledFor && new Date(newPost.scheduledFor) > new Date()) {
+      setScheduledPosts([postWithId, ...scheduledPosts]);
+      setToastMessage("Post scheduled successfully! 📅");
+    } else {
+      setPosts([postWithId, ...posts]);
+      setToastMessage("Post published successfully! ✨");
+    }
     setIsComposing(false);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
@@ -250,6 +308,61 @@ export function CommunityFeed({
         ))}
       </div>
 
+      {/* Scheduled Posts Dashboard */}
+      {scheduledPosts.length > 0 && (
+        <div className="bg-[#151520] border border-amber-500/20 rounded-2xl p-4 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-amber-400">📅</span>
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Scheduled Posts ({scheduledPosts.length})</span>
+          </div>
+          <p className="text-[11px] text-[#888899]">
+            These posts are queued and will automatically release to the community feed at their scheduled times. You can release them immediately or cancel the schedule.
+          </p>
+          <div className="flex flex-col gap-2">
+            {scheduledPosts.map((sp) => (
+              <div key={sp.id} className="bg-[#1C1C28] border border-white/5 rounded-xl p-3 flex justify-between items-center flex-wrap gap-2">
+                <div className="flex flex-col gap-1 min-w-[150px] flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-white/5 text-white/70">{sp.type}</span>
+                    {sp.tag && <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-bold">🏷 {sp.tag}</span>}
+                  </div>
+                  <p className="text-xs text-white/90 line-clamp-2 mt-1">{sp.content || sp.question || sp.eventTitle || "No content"}</p>
+                  <span className="text-[10px] text-amber-400 font-medium mt-0.5">📅 Scheduled for: {new Date(sp.scheduledFor).toLocaleString()}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const { scheduledFor, ...rest } = sp;
+                      const published = { ...rest, id: `p${Date.now()}_${Math.random()}`, time: "Just now" };
+                      setPosts([published, ...posts]);
+                      setScheduledPosts(scheduledPosts.filter(p => p.id !== sp.id));
+                      setToastMessage("Post published successfully! ✨");
+                      setShowToast(true);
+                      setTimeout(() => setShowToast(false), 3000);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-amber-500 text-black font-bold text-[10px] hover:bg-amber-400 active:scale-95 transition-all"
+                  >
+                    Publish Now
+                  </button>
+                  <button
+                    onClick={() => {
+                      setScheduledPosts(scheduledPosts.filter(p => p.id !== sp.id));
+                      setToastMessage("Scheduled post cancelled and removed!");
+                      setShowToast(true);
+                      setTimeout(() => setShowToast(false), 3000);
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-red-400 transition-colors"
+                    title="Cancel Schedule"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Feed List */}
       <div className="flex flex-col gap-4 relative pb-10">
         <AnimatePresence>
@@ -270,6 +383,20 @@ export function CommunityFeed({
                   colors={colors}
                   joined={joined}
                   onShare={handleSharePost}
+                  isAdmin={isAdmin}
+                  userRole={userRole}
+                  onDelete={(pId) => {
+                    setPosts(posts.filter((p) => p.id !== pId));
+                    setToastMessage(post.type === "announcement" ? "Announcement removed successfully!" : "Post deleted successfully!");
+                    setShowToast(true);
+                    setTimeout(() => setShowToast(false), 3000);
+                  }}
+                  onRemoveTag={(pId) => {
+                    setPosts(posts.map((p) => (p.id === pId ? { ...p, tag: undefined } : p)));
+                    setToastMessage("Tag removed successfully!");
+                    setShowToast(true);
+                    setTimeout(() => setShowToast(false), 3000);
+                  }}
                   onVote={(postId, optionId) => {
                     setPosts(
                       posts.map((p) => {
@@ -357,7 +484,7 @@ export function CommunityFeed({
               fill="currentColor"
             />
             <span className="font-bold text-white text-sm">
-              Posted to {world.name} ⚡
+              {toastMessage}
             </span>
           </motion.div>
         )}
@@ -389,24 +516,31 @@ export function CommunityFeed({
 }
 
 function PostCard({
-
   post,
   colors,
   joined,
   onVote,
   onShare,
+  onDelete,
+  onRemoveTag,
+  isAdmin,
+  userRole,
 }: {
   post: any;
   colors: string[];
   joined?: boolean;
   onVote: (pId: string, oId: string) => void;
   onShare: (post: any) => void;
-  key?: any;
+  onDelete?: (pId: string) => void;
+  onRemoveTag?: (pId: string) => void;
+  isAdmin?: boolean;
+  userRole?: "admin" | "moderator" | "member" | "explorer";
 }) {
   const [sparks, setSparks] = useState(post.sparks);
   const [sparked, setSparked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [pickerPos, setPickerPos] = useState({ x: 0, y: 0 });
   const [particles, setParticles] = useState<
     { id: number; angle: number; speed: number }[]
@@ -601,6 +735,11 @@ function PostCard({
               >
                 {authorBadge.label}
               </span>
+              {post.tag && (
+                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                  🏷 {post.tag}
+                </span>
+              )}
             </div>
             <span className="text-[11px] text-[#888899] mt-0.5">
               {post.time}
@@ -817,16 +956,58 @@ function PostCard({
           </button>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 relative">
           <button
             onClick={() => onShare(post)}
             className="p-2 rounded-full hover:bg-white/5 text-[#888899] hover:text-white transition-colors"
           >
             <Share2 className="w-4 h-4" />
           </button>
-          <button className="p-2 rounded-full hover:bg-white/5 text-[#888899] transition-colors">
+          <button
+            onClick={() => setShowDropdown(!showDropdown)}
+            className={`p-2 rounded-full transition-colors ${showDropdown ? "bg-white/10 text-white" : "hover:bg-white/5 text-[#888899]"}`}
+          >
             <MoreVertical className="w-4 h-4" />
           </button>
+
+          {showDropdown && (
+            <>
+              <div
+                className="fixed inset-0 z-30 bg-transparent"
+                onClick={() => setShowDropdown(false)}
+              />
+              <div className="absolute right-0 bottom-full mb-2 bg-[#1A1A24] border border-white/10 rounded-xl py-1.5 shadow-2xl z-40 min-w-[160px] flex flex-col">
+                {post.tag && (isAdmin || userRole === "moderator" || post.author === "You") && (
+                  <button
+                    onClick={() => {
+                      onRemoveTag?.(post.id);
+                      setShowDropdown(false);
+                    }}
+                    className="px-3 py-2 text-left hover:bg-white/5 text-purple-300 font-bold text-xs flex items-center gap-2 transition-all"
+                  >
+                    <span>🏷</span> Remove Tag
+                  </button>
+                )}
+                {(isAdmin || userRole === "moderator" || post.author === "You") && (
+                  <button
+                    onClick={() => {
+                      onDelete?.(post.id);
+                      setShowDropdown(false);
+                    }}
+                    className="px-3 py-2 text-left hover:bg-white/5 text-[#EF4444] font-bold text-xs flex items-center gap-2 transition-all"
+                  >
+                    <span>🗑</span> {post.type === "announcement" ? "Remove Announcement" : "Delete Post"}
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowDropdown(false)}
+                  className="px-3 py-2 text-left hover:bg-white/5 text-white/50 font-bold text-[11px] border-t border-white/5 transition-all mt-1"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -1069,6 +1250,14 @@ function Composer({
   const [eventTime, setEventTime] = useState("");
   const [eventLocation, setEventLocation] = useState("");
 
+  // Tag & Schedule State
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [showTagSelector, setShowTagSelector] = useState(false);
+  const [scheduledFor, setScheduledFor] = useState<string | null>(null);
+  const [showSchedulePicker, setShowSchedulePicker] = useState(false);
+
+  const PREDEFINED_TAGS = ["General", "Gaming", "Meme", "Strategy", "LFT", "Questions"];
+
   const roleBadge =
     isAdmin ? { label: "Admin", color: colors[0] } :
     userRole === "moderator" ? { label: "Mod", color: "#A78BFA" } :
@@ -1097,6 +1286,13 @@ function Composer({
       time: "Just now",
       pinned: postType === "announcement",
     };
+
+    if (selectedTag) {
+      post.tag = selectedTag;
+    }
+    if (scheduledFor) {
+      post.scheduledFor = scheduledFor;
+    }
 
     if (postType === "text" || postType === "announcement") {
       post.content = content.trim();
@@ -1282,9 +1478,11 @@ function Composer({
                     />
                     {pollOpts.length > 2 && (
                       <button
-                        onClick={() =>
-                          setPollOpts(pollOpts.filter((_, idx) => idx !== i))
-                        }
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPollOpts(pollOpts.filter((_, idx) => idx !== i));
+                        }}
                         className="p-2 text-[#888899] hover:text-[#EF4444] transition-colors"
                       >
                         <X className="w-4 h-4" />
@@ -1294,7 +1492,11 @@ function Composer({
                 ))}
                 {pollOpts.length < 4 && (
                   <button
-                    onClick={() => setPollOpts([...pollOpts, ""])}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPollOpts([...pollOpts, ""]);
+                    }}
                     className="text-[12px] font-bold text-[#888899] hover:text-white mt-1 py-2 w-max transition-colors"
                   >
                     + Add option (max 4)
@@ -1309,6 +1511,7 @@ function Composer({
                 <div className="flex gap-2">
                   {["2h", "6h", "24h", "7d"].map((d) => (
                     <button
+                      type="button"
                       key={d}
                       className={`px-2 py-1 rounded-md text-[11px] font-bold bg-white/5 border border-white/10 ${d === "24h" ? "text-white border-white/30" : "text-[#888899]"}`}
                     >
@@ -1414,20 +1617,124 @@ function Composer({
                 : "(Announce: admin & moderators only)"}
             </p>
           </div>
+
+          {/* Active Status Chips (Dismissible Tags & Schedule) */}
+          {(selectedTag || scheduledFor) && (
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5 mt-2">
+              {selectedTag && (
+                <div className="flex items-center gap-1.5 bg-purple-500/10 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all">
+                  <span>🏷 {selectedTag}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSelectedTag(null);
+                    }}
+                    className="hover:text-white transition-colors ml-1 font-bold text-xs"
+                    title="Remove Tag"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              {scheduledFor && (
+                <div className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all">
+                  <span>📅 {new Date(scheduledFor).toLocaleDateString()} at {new Date(scheduledFor).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setScheduledFor(null);
+                    }}
+                    className="hover:text-white transition-colors ml-1 font-bold text-xs"
+                    title="Cancel Schedule"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Interactive Selection Panels */}
+          {showTagSelector && (
+            <div className="bg-[#151520] border border-white/5 p-3 rounded-xl flex flex-col gap-2 mt-2">
+              <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Select Tag</span>
+              <div className="flex flex-wrap gap-1.5">
+                {PREDEFINED_TAGS.map((t) => (
+                  <button
+                    type="button"
+                    key={t}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSelectedTag(t === selectedTag ? null : t);
+                      setShowTagSelector(false);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border ${t === selectedTag ? "bg-purple-500/20 text-purple-200 border-purple-500/40" : "bg-white/5 text-white/70 border-transparent hover:bg-white/10"}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showSchedulePicker && (
+            <div className="bg-[#151520] border border-white/5 p-3 rounded-xl flex flex-col gap-2 mt-2">
+              <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Set Scheduled Date & Time</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="datetime-local"
+                  value={scheduledFor || ""}
+                  onChange={(e) => setScheduledFor(e.target.value)}
+                  className="bg-[#1A1A24] text-white text-xs font-bold border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-white/20 transition-all flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowSchedulePicker(false);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-white/5 text-white text-xs hover:bg-white/10 font-bold transition-all"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Toolbar */}
         <div className="p-3 border-t border-white/5 shrink-0 flex items-center justify-between bg-[#111115]">
           <div className="flex items-center gap-2 text-[#888899]">
-            <button className="p-2 hover:text-white transition-colors rounded-full hover:bg-white/5 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowTagSelector(!showTagSelector);
+                setShowSchedulePicker(false);
+              }}
+              className={`p-2 transition-colors rounded-full flex items-center gap-1 ${showTagSelector ? "text-white bg-white/10" : "hover:text-white hover:bg-white/5"}`}
+            >
               <span className="text-lg leading-none">🏷</span>{" "}
               <span className="text-[12px] font-bold">Tag</span>
             </button>
-            <button className="p-2 hover:text-white transition-colors rounded-full hover:bg-white/5 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowSchedulePicker(!showSchedulePicker);
+                setShowTagSelector(false);
+              }}
+              className={`p-2 transition-colors rounded-full flex items-center gap-1 ${showSchedulePicker ? "text-white bg-white/10" : "hover:text-white hover:bg-white/5"}`}
+            >
               <span className="text-lg leading-none">📅</span>{" "}
               <span className="text-[12px] font-bold">Schedule</span>
             </button>
-            <button className="p-2 hover:text-white transition-colors rounded-full hover:bg-white/5 flex items-center gap-1">
+            <button
+              type="button"
+              className="p-2 hover:text-white transition-colors rounded-full hover:bg-white/5 flex items-center gap-1"
+            >
               <span className="text-lg leading-none">🌍</span>{" "}
               <span className="text-[12px] font-bold">All</span>
             </button>
