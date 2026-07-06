@@ -905,18 +905,6 @@ export default function ConnectScreen() {
                        <div className="text-white/70 text-sm">Create a squad, invite friends</div>
                     </div>
                  </button>
-                 <button 
-                   onClick={() => { setShowCreateMenu(false); showToast('📢 Broadcast lists coming soon!'); }}
-                   className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
-                 >
-                    <div className="w-12 h-12 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center">
-                       <Megaphone />
-                    </div>
-                    <div className="text-left flex-1">
-                       <div className="text-white font-bold text-lg">New Broadcast</div>
-                       <div className="text-white/50 text-sm">Send message to multiple people</div>
-                    </div>
-                 </button>
               </div>
             </motion.div>
           </div>
