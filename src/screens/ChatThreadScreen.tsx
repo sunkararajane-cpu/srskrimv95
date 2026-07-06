@@ -33,7 +33,7 @@ const generateWaveform = (barCount = 40) => {
   });
 };
 
-const MOCK_MESSAGES: Message[] = [
+export const MOCK_MESSAGES: Message[] = [
   { id: (Date.now() - 1250000).toString(), sender: "them", text: "Hey! Did you watch that new video? 🔥", time: "10:32 AM", type: "text", mood: "hype" },
   { id: (Date.now() - 1240000).toString(), sender: "me", text: "Yes!! It was so good 😂😂", time: "10:33 AM", type: "text", status: "read", mood: "hype" },
   { id: (Date.now() - 1230000).toString(), sender: "them", time: "10:34 AM", type: "voice", duration: 24, waveform: generateWaveform(), mood: "chill" },

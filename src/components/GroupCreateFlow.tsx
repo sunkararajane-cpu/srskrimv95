@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, X, Users, Camera, Image as ImageIcon, Flame, Zap, Crown, Target, Heart, Navigation, Trophy, Gamepad2, Stars, Globe, Settings, ArrowRight, Check } from 'lucide-react';
+import { Search, X, Users, Camera, Image as ImageIcon, Flame, Zap, Crown, Target, Heart, Navigation, Trophy, Gamepad2, Stars, Globe, Settings, ArrowRight, Check, Plus, Trash2, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+const PRESET_RULES = [
+  "Respect all members",
+  "No spam or advertisement links",
+  "No abusive or hate speech",
+  "Keep discussions on-topic",
+  "Listen to group admins",
+  "No private chat screenshots",
+];
 
 const MOCK_CONTACTS = [
   { id: "c1", name: "Ananya K", lastSeen: "Online", online: true },
@@ -57,6 +66,12 @@ export function GroupCreateFlow({ onClose, onGroupCreated }: Props) {
   const [isPublic, setIsPublic] = useState(false);
   const [msgAdminOnly, setMsgAdminOnly] = useState(false);
   const [addAdminOnly, setAddAdminOnly] = useState(false);
+  const [adminRules, setAdminRules] = useState<string[]>([
+     "Respect all group members",
+     "No spamming, advertising or self-promotion",
+     "Keep discussions clean and on-topic"
+  ]);
+  const [customRuleText, setCustomRuleText] = useState("");
   
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [avatar, setAvatar] = useState<{ emoji: string, bg: string } | null>(null);
@@ -87,7 +102,8 @@ export function GroupCreateFlow({ onClose, onGroupCreated }: Props) {
              avatar: avatar ? `https://ui-avatars.com/api/?name=${avatar.emoji}&background=random&color=fff` : 'https://api.dicebear.com/7.x/shapes/svg?seed=' + Math.random(),
              emojiAvatar: avatar,
              members: selectedIds,
-             description: groupDescription
+             description: groupDescription,
+             adminRules: adminRules
           });
        }, 1500);
     }, 1000);
@@ -320,6 +336,107 @@ export function GroupCreateFlow({ onClose, onGroupCreated }: Props) {
                </div>
 
                <div>
+                  {/* Admin Rules & Guidelines Section */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-4 mb-6">
+                     <div className="flex items-center gap-2">
+                       <ShieldAlert className="w-5 h-5 text-neon-purple" />
+                       <div>
+                         <h3 className="text-white font-bold text-sm">Group Rules & Guidelines</h3>
+                         <p className="text-white/40 text-[11px]">Set boundaries for your group squad members</p>
+                       </div>
+                     </div>
+
+                     {/* Active Rules List */}
+                     {adminRules.length > 0 ? (
+                       <div className="space-y-2 bg-[#12121B] rounded-xl p-3 border border-white/5">
+                         {adminRules.map((rule, idx) => (
+                           <div key={idx} className="flex items-start justify-between gap-3 text-xs text-white/80 py-1 border-b border-white/[0.03] last:border-0">
+                             <span className="leading-relaxed flex gap-2">
+                               <span className="text-neon-purple font-bold">{idx + 1}.</span>
+                               {rule}
+                             </span>
+                             <button
+                               type="button"
+                               onClick={() => setAdminRules(adminRules.filter((_, i) => i !== idx))}
+                               className="p-1 text-white/30 hover:text-red-400 hover:bg-white/5 rounded transition-colors shrink-0"
+                               title="Remove Rule"
+                             >
+                               <X size={14} />
+                             </button>
+                           </div>
+                         ))}
+                       </div>
+                     ) : (
+                       <div className="text-center py-6 bg-[#12121B] rounded-xl border border-white/5 text-xs text-white/40">
+                         No rules specified yet. Group will have free-for-all guidelines.
+                       </div>
+                     )}
+
+                     {/* Quick Add Presets */}
+                     <div>
+                       <span className="text-[10px] text-white/50 font-bold tracking-wider uppercase block mb-2">QUICK ADD PRESETS</span>
+                       <div className="flex flex-wrap gap-1.5">
+                         {PRESET_RULES.map((preset) => {
+                           const exists = adminRules.includes(preset);
+                           return (
+                             <button
+                               key={preset}
+                               type="button"
+                               onClick={() => {
+                                 if (exists) {
+                                   setAdminRules(adminRules.filter(r => r !== preset));
+                                 } else {
+                                   setAdminRules([...adminRules, preset]);
+                                 }
+                               }}
+                               className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                                 exists 
+                                   ? 'bg-neon-purple/20 text-white border border-neon-purple/50' 
+                                   : 'bg-white/5 text-white/60 border border-white/5 hover:bg-white/10'
+                               }`}
+                             >
+                               {exists ? '✓ ' : '+ '} {preset}
+                             </button>
+                           );
+                         })}
+                       </div>
+                     </div>
+
+                     {/* Add Custom Rule Input */}
+                     <div className="flex gap-2">
+                       <input
+                         type="text"
+                         value={customRuleText}
+                         onChange={(e) => setCustomRuleText(e.target.value)}
+                         maxLength={120}
+                         placeholder="Type custom rule (e.g. Keep it Telugu only)..."
+                         className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 outline-none focus:border-neon-purple/60"
+                         onKeyDown={(e) => {
+                           if (e.key === 'Enter') {
+                             e.preventDefault();
+                             if (customRuleText.trim() && !adminRules.includes(customRuleText.trim())) {
+                               setAdminRules([...adminRules, customRuleText.trim()]);
+                               setCustomRuleText("");
+                             }
+                           }
+                         }}
+                       />
+                       <button
+                         type="button"
+                         disabled={!customRuleText.trim()}
+                         onClick={() => {
+                           if (customRuleText.trim() && !adminRules.includes(customRuleText.trim())) {
+                             setAdminRules([...adminRules, customRuleText.trim()]);
+                             setCustomRuleText("");
+                           }
+                         }}
+                         className="px-3 rounded-xl bg-neon-purple hover:bg-neon-purple/80 disabled:opacity-45 disabled:pointer-events-none text-white font-bold text-xs flex items-center justify-center gap-1 transition-all"
+                       >
+                         <Plus size={14} /> Add
+                       </button>
+                     </div>
+                  </div>
+
                  <label className="text-xs text-white/50 font-bold tracking-wider mb-2 block uppercase">Permissions</label>
                  <div className="space-y-4">
                     <div>

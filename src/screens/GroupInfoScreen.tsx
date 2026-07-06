@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { CHAT_THEMES } from "../constants/themes";
 import { MOCK_CHATS } from "../lib/mock/mockChatDirectory";
+import { MOCK_MESSAGES } from "./ChatThreadScreen";
 
 const CONTACTS_MAP: Record<string, { name: string, online: boolean }> = {
   "c1": { name: "Ananya K", online: true },
@@ -158,7 +159,8 @@ export default function GroupInfoScreen() {
               createdBy: found.createdBy || "rajani",
               memberCount: resolvedMembers.length,
               members: resolvedMembers,
-              isAdmin: true
+              isAdmin: true,
+              adminRules: found.adminRules || []
             };
           }
         }
@@ -193,7 +195,17 @@ export default function GroupInfoScreen() {
           createdBy: groupId === "3" ? "rajani" : "Priya",
           memberCount: defaultMembers.length,
           members: defaultMembers,
-          isAdmin: groupId === "3"
+          isAdmin: groupId === "3",
+          adminRules: groupId === "3" ? [
+            "Respect all members of the Telugu Squad 🌟",
+            "Keep discussions focused on regional games and vibes",
+            "No spamming, swearing, or toxic behavior",
+            "Admins have the final say on all match disputes"
+          ] : [
+            "Keep it wholesome ✨",
+            "Respect each other's gaming setups and opinions",
+            "No self-promotion or referral link spamming"
+          ]
         };
       }
     }
@@ -207,7 +219,13 @@ export default function GroupInfoScreen() {
       createdBy: MOCK_GROUP.createdBy,
       memberCount: MOCK_GROUP.memberCount,
       members: MOCK_GROUP.members,
-      isAdmin: MOCK_GROUP.isAdmin
+      isAdmin: MOCK_GROUP.isAdmin,
+      adminRules: [
+        "Respect all members of the Telugu Squad 🌟",
+        "Keep discussions focused on regional games and vibes",
+        "No spamming, swearing, or toxic behavior",
+        "Admins have the final say on all match disputes"
+      ]
     };
   });
 
@@ -215,7 +233,7 @@ export default function GroupInfoScreen() {
 
   // Sync state if groupId changes
   useEffect(() => {
-    let resolvedGroup = {
+    let resolvedGroup: any = {
       id: "3",
       name: MOCK_GROUP.name,
       avatar: MOCK_GROUP.avatar,
@@ -223,7 +241,13 @@ export default function GroupInfoScreen() {
       createdBy: MOCK_GROUP.createdBy,
       memberCount: MOCK_GROUP.memberCount,
       members: MOCK_GROUP.members,
-      isAdmin: MOCK_GROUP.isAdmin
+      isAdmin: MOCK_GROUP.isAdmin,
+      adminRules: [
+        "Respect all members of the Telugu Squad 🌟",
+        "Keep discussions focused on regional games and vibes",
+        "No spamming, swearing, or toxic behavior",
+        "Admins have the final say on all match disputes"
+      ]
     };
 
     if (groupId) {
@@ -263,7 +287,8 @@ export default function GroupInfoScreen() {
                 createdBy: found.createdBy || "rajani",
                 memberCount: resolvedMembers.length,
                 members: resolvedMembers,
-                isAdmin: true
+                isAdmin: true,
+                adminRules: found.adminRules || []
               };
             }
           }
@@ -295,7 +320,17 @@ export default function GroupInfoScreen() {
             createdBy: groupId === "3" ? "rajani" : "Priya",
             memberCount: defaultMembers.length,
             members: defaultMembers,
-            isAdmin: groupId === "3"
+            isAdmin: groupId === "3",
+            adminRules: groupId === "3" ? [
+              "Respect all members of the Telugu Squad 🌟",
+              "Keep discussions focused on regional games and vibes",
+              "No spamming, swearing, or toxic behavior",
+              "Admins have the final say on all match disputes"
+            ] : [
+              "Keep it wholesome ✨",
+              "Respect each other's gaming setups and opinions",
+              "No self-promotion or referral link spamming"
+            ]
           };
         }
       }
@@ -399,21 +434,81 @@ export default function GroupInfoScreen() {
 
   const handlePostAnnouncement = () => {
     if (!newAnnouncementText.trim()) return;
+    const cleanText = newAnnouncementText.trim();
     const newAnn = {
       id: "ann_" + Date.now(),
-      text: newAnnouncementText.trim(),
+      text: cleanText,
       createdBy: "rajani",
       role: "Admin",
       createdAt: "Just now",
       memberCount: members.length
     };
     setAnnouncements(prev => [newAnn, ...prev]);
+
+    // Also append a text notification in the group chat history
+    try {
+      const activeChatId = groupId || "3"; // default to Telugu Squad
+      const chatKey = `skrimchat_messages_${activeChatId}`;
+      const storedMessagesStr = localStorage.getItem(chatKey);
+      let chatMessages: any[] = [];
+      if (storedMessagesStr) {
+        chatMessages = JSON.parse(storedMessagesStr);
+      } else {
+        chatMessages = [...MOCK_MESSAGES];
+      }
+
+      const announcementMsg = {
+        id: "msg_ann_" + Date.now(),
+        sender: "them" as const, // align left like a received notification
+        senderName: "📢 ANNOUNCEMENT",
+        senderAvatar: group.avatar || "🔥",
+        senderIsAdmin: true,
+        text: `📢 GROUP ANNOUNCEMENT:\n\n"${cleanText}"\n\n- Posted by rajani (Admin)`,
+        time: "Just now",
+        type: "text" as const,
+        mood: "hype" as const,
+        status: "read" as const
+      };
+
+      chatMessages.push(announcementMsg);
+      localStorage.setItem(chatKey, JSON.stringify(chatMessages));
+
+      // Also update the last message in custom_chats list or MOCK_CHATS if possible so it appears in the list view!
+      const customChatsStr = localStorage.getItem('skrimchat_custom_chats');
+      // If there's a custom list of conversations, let's keep it in sync, or we can just save it.
+    } catch (err) {
+      console.error("Error writing announcement to chat history:", err);
+    }
+
     setNewAnnouncementText("");
   };
 
   // Tab Content Renders
   const renderInfoTab = () => (
     <div className="flex flex-col">
+      {/* Group Rules & Guidelines */}
+      {group.adminRules && group.adminRules.length > 0 && (
+        <div className="bg-[#141414] border-y border-white/5 py-4 px-4 mb-4">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-white/60 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+              🛡️ Group Rules & Guidelines
+            </span>
+          </div>
+          <div className="space-y-3 bg-black/40 border border-white/5 rounded-xl p-3">
+            {group.adminRules.map((rule: string, idx: number) => (
+              <div key={idx} className="flex gap-2.5 text-xs text-white/90 leading-relaxed items-start border-b border-white/[0.03] pb-2 last:border-0 last:pb-0">
+                <span className="font-bold text-[#00F0FF] shrink-0 mt-[1px]">
+                  {idx + 1}.
+                </span>
+                <span className="text-white/80">
+                  {rule}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Media & Files */}
       <div className="bg-[#141414] border-y border-white/5 py-4 px-4 mb-4">
         <div className="flex justify-between items-center mb-3">

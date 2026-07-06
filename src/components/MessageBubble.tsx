@@ -242,11 +242,18 @@ export function MessageBubble({ message, isConsecutiveTop, isConsecutiveBottom, 
       bubbleStyle.background = currentMoodObj ? `linear-gradient(135deg, ${currentMoodObj.bubbleGradient[0]}, ${currentMoodObj.bubbleGradient[1]})` : defaultSentGradient;
       bubbleStyle.boxShadow = `0 2px 12px ${currentMoodObj ? currentMoodObj.glow : 'rgba(176,38,255,0.3)'}`;
     } else {
-      bubbleStyle.background = 'rgba(255,255,255,0.08)';
-      bubbleStyle.backdropFilter = 'blur(10px)';
-      bubbleStyle.border = isPulsed ? '1px solid #FFD700' : '1px solid rgba(255,255,255,0.06)';
-      if (isPulsed) {
-        bubbleStyle.boxShadow = '0 0 10px rgba(255,215,0,0.5)';
+      if (message.senderName === "📢 ANNOUNCEMENT") {
+        bubbleStyle.background = 'rgba(176, 38, 255, 0.12)';
+        bubbleStyle.border = '1.5px solid rgba(176, 38, 255, 0.5)';
+        bubbleStyle.boxShadow = '0 0 15px rgba(176, 38, 255, 0.25)';
+        bubbleStyle.backdropFilter = 'blur(10px)';
+      } else {
+        bubbleStyle.background = 'rgba(255,255,255,0.08)';
+        bubbleStyle.backdropFilter = 'blur(10px)';
+        bubbleStyle.border = isPulsed ? '1px solid #FFD700' : '1px solid rgba(255,255,255,0.06)';
+        if (isPulsed) {
+          bubbleStyle.boxShadow = '0 0 10px rgba(255,215,0,0.5)';
+        }
       }
     }
 
