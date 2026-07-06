@@ -62,21 +62,14 @@ export function AttachmentPicker({ onSendPhoto, onSendVideo, onSendFile, onSendS
   const photoInputRef = React.useRef<HTMLInputElement>(null);
   const videoInputRef = React.useRef<HTMLInputElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const readFileAsDataUrl = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+  const songInputRef = React.useRef<HTMLInputElement>(null);
 
   const handlePhotoFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const dataUrl = await readFileAsDataUrl(file);
-    setSelectedItem({ id: `upload-${Date.now()}`, uri: dataUrl, isUpload: true });
+    const objectUrl = URL.createObjectURL(file);
+    setSelectedItem({ id: `upload-${Date.now()}`, uri: objectUrl, isUpload: true });
     setStep('photo_preview');
   };
 
@@ -84,8 +77,8 @@ export function AttachmentPicker({ onSendPhoto, onSendVideo, onSendFile, onSendS
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const dataUrl = await readFileAsDataUrl(file);
-    onSendVideo({ id: `upload-${Date.now()}`, uri: dataUrl, isUpload: true, duration: '' });
+    const objectUrl = URL.createObjectURL(file);
+    onSendVideo({ id: `upload-${Date.now()}`, uri: objectUrl, isUpload: true, duration: '0:05' });
     onClose();
   };
 
@@ -93,10 +86,28 @@ export function AttachmentPicker({ onSendPhoto, onSendVideo, onSendFile, onSendS
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const dataUrl = await readFileAsDataUrl(file);
+    const objectUrl = URL.createObjectURL(file);
     const sizeKb = file.size / 1024;
     const sizeLabel = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${Math.round(sizeKb)} KB`;
-    onSendFile({ name: file.name, size: sizeLabel, uri: dataUrl, isUpload: true, type: file.type.includes('pdf') ? 'pdf' : file.type.includes('image') ? 'image' : 'file' });
+    onSendFile({ name: file.name, size: sizeLabel, uri: objectUrl, isUpload: true, type: file.type.includes('pdf') ? 'pdf' : file.type.includes('image') ? 'image' : 'file' });
+    onClose();
+  };
+
+  const handleSongFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+    onSendSong({
+      title: fileNameWithoutExt,
+      movie: 'Local Audio',
+      artist: 'Uploaded',
+      duration: '3:00',
+      color: '#7B2FF7',
+      uri: objectUrl,
+      isUpload: true
+    });
     onClose();
   };
   
@@ -308,7 +319,16 @@ export function AttachmentPicker({ onSendPhoto, onSendVideo, onSendFile, onSendS
               <h3 className="text-white font-bold">🎵 Share a Song</h3>
               <button onClick={onClose} className="text-white/50"><X size={20}/></button>
             </div>
-            <div className="px-4 py-2">
+            <div className="p-4">
+              <button 
+                onClick={() => songInputRef.current?.click()} 
+                className="w-full py-2 bg-white/10 hover:bg-white/15 rounded-lg text-white font-medium text-sm flex items-center justify-center gap-2 transition-colors"
+              >
+                <Music size={16}/> Upload Audio File
+              </button>
+              <input ref={songInputRef} type="file" accept="audio/*" className="hidden" onChange={handleSongFilePicked} />
+            </div>
+            <div className="px-4 py-1">
               <input type="text" placeholder="🔍 Search songs..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-neon-purple" />
             </div>
             <div className="px-4 py-2 text-[10px] uppercase font-bold text-white/40 tracking-wider">Trending Songs</div>
@@ -321,8 +341,8 @@ export function AttachmentPicker({ onSendPhoto, onSendVideo, onSendFile, onSendS
                         <span className="text-white font-bold text-sm tracking-tight">{s.title}</span>
                         <span className="text-white/60 text-xs">{s.movie} · {s.artist}</span>
                         <div className="flex gap-2 mt-2">
-                          <button className="text-[10px] bg-white/10 px-2 py-1 rounded text-white"><Play size={10} className="inline mr-1" />Preview</button>
-                          <button onClick={() => { onSendSong(s); onClose(); }} className="text-[10px] bg-neon-purple text-white px-3 py-1 rounded font-bold shadow-[0_0_8px_rgba(176,38,255,0.4)]">Share</button>
+                           <button className="text-[10px] bg-white/10 px-2 py-1 rounded text-white"><Play size={10} className="inline mr-1" />Preview</button>
+                           <button onClick={() => { onSendSong(s); onClose(); }} className="text-[10px] bg-neon-purple text-white px-3 py-1 rounded font-bold shadow-[0_0_8px_rgba(176,38,255,0.4)]">Share</button>
                         </div>
                      </div>
                   </div>

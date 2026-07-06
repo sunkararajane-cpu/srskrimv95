@@ -101,7 +101,7 @@ export interface ChallengeResultMessage extends BaseMessage {
 
 export interface PhotoMessage extends BaseMessage {
   type: 'photo';
-  photo: { id: string; color: string; emoji: string; caption?: string; filter?: string; };
+  photo: { id: string; color: string; emoji: string; caption?: string; filter?: string; uri?: string; };
   uploadProgress?: number;
   viewOnce?: boolean;
   viewOnceOpened?: boolean;
@@ -109,7 +109,7 @@ export interface PhotoMessage extends BaseMessage {
 
 export interface VideoMessage extends BaseMessage {
   type: 'video';
-  video: { id: string; duration: string; color: string; emoji: string; };
+  video: { id: string; duration: string; color: string; emoji: string; uri?: string; };
   uploadProgress?: number;
   viewOnce?: boolean;
   viewOnceOpened?: boolean;
@@ -117,13 +117,13 @@ export interface VideoMessage extends BaseMessage {
 
 export interface FileMessage extends BaseMessage {
   type: 'file';
-  file: { name: string; size: string; fileType: string; };
+  file: { name: string; size: string; fileType: string; uri?: string; };
   uploadProgress?: number;
 }
 
 export interface SongMessage extends BaseMessage {
   type: 'song';
-  song: { title: string; movie: string; artist: string; duration: string; color: string; };
+  song: { title: string; movie: string; artist: string; duration: string; color: string; uri?: string; };
 }
 
 export interface LocationMessage extends BaseMessage {

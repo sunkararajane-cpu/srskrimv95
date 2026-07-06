@@ -415,6 +415,31 @@ export default function ChatThreadScreen() {
     navigateToChallengeGame(message);
   };
 
+  const handleVotePoll = (messageId: string, optionId: string) => {
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId || m.type !== 'poll') return m;
+      
+      const isMulti = !!m.poll.multiSelect;
+      const updatedOptions = m.poll.options.map(o => {
+        const alreadyVoted = o.votes.includes('me');
+        let nextVotes = [...o.votes];
+        
+        if (o.id === optionId) {
+          if (alreadyVoted) {
+            nextVotes = nextVotes.filter(v => v !== 'me');
+          } else {
+            nextVotes.push('me');
+          }
+        } else if (!isMulti) {
+          // Clear 'me' from other options if single-select
+          nextVotes = nextVotes.filter(v => v !== 'me');
+        }
+        return { ...o, votes: nextVotes };
+      });
+      return { ...m, poll: { ...m.poll, options: updatedOptions } } as any;
+    }));
+  };
+
   const navigateToChallengeGame = (message: Message) => {
     if (message.type !== 'challenge') return;
     const gameId = message.game || 'emoji_guess';
@@ -837,6 +862,7 @@ export default function ChatThreadScreen() {
         onAcceptChallenge={handleAcceptChallenge}
         onDeclineChallenge={handleDeclineChallenge}
         onRematchChallenge={handleRematchChallenge}
+        onVotePoll={handleVotePoll}
       />
 
       <SuggestedReplies 

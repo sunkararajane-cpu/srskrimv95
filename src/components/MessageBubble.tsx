@@ -17,6 +17,7 @@ interface Props {
   onAcceptChallenge?: () => void;
   onDeclineChallenge?: () => void;
   onRematchChallenge?: () => void;
+  onVotePoll?: (messageId: string, optionId: string) => void;
 }
 
 const useVoicePlayback = (duration: number) => {
@@ -155,11 +156,37 @@ const VoiceContent = ({ message, isMe }: { message: any, isMe: boolean }) => {
 };
 const defaultSentGradient = 'linear-gradient(135deg, #7B2FF7, #B026FF)';
 
-export function MessageBubble({ message, isConsecutiveTop, isConsecutiveBottom, mood, theme, isPinned, onLongPress, onReactionClick, onAcceptChallenge, onDeclineChallenge, onRematchChallenge }: Props) {
+export function MessageBubble({ message, isConsecutiveTop, isConsecutiveBottom, mood, theme, isPinned, onLongPress, onReactionClick, onAcceptChallenge, onDeclineChallenge, onRematchChallenge, onVotePoll }: Props) {
   const isMe = message.sender === 'me';
   
   const [isActive, setIsActive] = useState(false);
   const pressTimer = useRef<any>(null);
+
+  const [songPlaying, setSongPlaying] = useState(false);
+  const songAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (songAudioRef.current) {
+        songAudioRef.current.pause();
+      }
+    };
+  }, []);
+
+  const handleTogglePlaySong = (uri?: string) => {
+    if (!uri) return;
+    if (!songAudioRef.current) {
+      songAudioRef.current = new Audio(uri);
+      songAudioRef.current.onended = () => setSongPlaying(false);
+    }
+    if (songPlaying) {
+      songAudioRef.current.pause();
+      setSongPlaying(false);
+    } else {
+      songAudioRef.current.play().catch(() => {});
+      setSongPlaying(true);
+    }
+  };
 
   const handlePointerDown = () => {
     pressTimer.current = setTimeout(() => {
@@ -600,20 +627,31 @@ export function MessageBubble({ message, isConsecutiveTop, isConsecutiveBottom, 
                onClick={!isPhotoUploading ? () => window.dispatchEvent(new CustomEvent('open-media-viewer', { detail: message })) : undefined}
                className={`w-[220px] aspect-[4/5] rounded-xl flex flex-col relative overflow-hidden ${!isPhotoUploading ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''}`} 
                style={{ 
-                 backgroundColor: message.photo.color, 
+                 backgroundColor: message.photo.color || 'rgba(255,255,255,0.05)', 
                  filter: isPhotoUploading ? 'blur(4px)' : 'none',
                  transition: 'filter 0.3s ease'
                }}
              >
-                {/* Mock photo content */}
-                <div 
-                  className="flex-1 flex items-center justify-center text-8xl"
-                  style={{ 
-                    filter: message.photo.filter === 'Vivid' ? 'saturate(200%)' : message.photo.filter === 'Cool' ? 'hue-rotate(90deg)' : message.photo.filter === 'Warm' ? 'sepia(50%)' : 'none'
-                  }}
-                >
-                  {message.photo.emoji}
-                </div>
+                {message.photo.uri ? (
+                  <img 
+                    src={message.photo.uri} 
+                    alt="Uploaded media" 
+                    className="w-full h-full object-cover"
+                    style={{ 
+                      filter: message.photo.filter === 'Vivid' ? 'saturate(200%)' : message.photo.filter === 'Cool' ? 'hue-rotate(90deg)' : message.photo.filter === 'Warm' ? 'sepia(50%)' : 'none'
+                    }}
+                  />
+                ) : (
+                  /* Mock photo content */
+                  <div 
+                    className="flex-1 flex items-center justify-center text-8xl"
+                    style={{ 
+                      filter: message.photo.filter === 'Vivid' ? 'saturate(200%)' : message.photo.filter === 'Cool' ? 'hue-rotate(90deg)' : message.photo.filter === 'Warm' ? 'sepia(50%)' : 'none'
+                    }}
+                  >
+                    {message.photo.emoji}
+                  </div>
+                )}
              </div>
              
              {isPhotoUploading && (
@@ -646,9 +684,20 @@ export function MessageBubble({ message, isConsecutiveTop, isConsecutiveBottom, 
                  transition: 'filter 0.3s ease'
                }}
              >
-                <div className="flex-1 flex items-center justify-center text-6xl">
-                  {message.video.emoji}
-                </div>
+                {message.video.uri ? (
+                  <video 
+                    src={message.video.uri} 
+                    className="w-full h-full object-cover" 
+                    muted 
+                    playsInline 
+                    loop
+                    autoPlay
+                  />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-6xl">
+                    {message.video.emoji}
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center pointer-events-none">
                    {!isVideoUploading && <Play fill="white" size={32} className="text-white opacity-90 drop-shadow-lg" />}
                 </div>
@@ -730,9 +779,11 @@ export function MessageBubble({ message, isConsecutiveTop, isConsecutiveBottom, 
                
                {/* Mini player mock */}
                <div className="flex items-center gap-2">
-                 <button className="text-white hover:text-neon-purple"><Play size={12} fill="currentColor" /></button>
+                 <button onClick={() => handleTogglePlaySong(message.song.uri)} className="text-white hover:text-neon-purple">
+                   {songPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
+                 </button>
                  <div className="flex-1 h-1 bg-white/20 rounded-full relative">
-                   <div className="absolute inset-y-0 left-0 bg-white rounded-full w-1/3"></div>
+                   <div className="absolute inset-y-0 left-0 bg-white rounded-full" style={{ width: songPlaying ? '100%' : '33%', transition: songPlaying ? 'width 180s linear' : 'none' }}></div>
                  </div>
                  <span className="text-[10px] text-white font-mono">{message.song.duration}</span>
                </div>
@@ -804,7 +855,14 @@ export function MessageBubble({ message, isConsecutiveTop, isConsecutiveBottom, 
                 const pct = totalVotes > 0 ? Math.round((opt.votes.length / totalVotes) * 100) : 0;
                 const voted = opt.votes.includes('me');
                 return (
-                  <div key={opt.id} className="relative rounded-lg overflow-hidden cursor-pointer group">
+                  <div 
+                    key={opt.id} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onVotePoll?.(message.id, opt.id);
+                    }}
+                    className="relative rounded-lg overflow-hidden cursor-pointer group hover:bg-white/5 transition-colors"
+                  >
                     <div className="absolute inset-0 rounded-lg" style={{ width: hasVoted ? `${pct}%` : '0%', background: voted ? 'rgba(176,38,255,0.25)' : 'rgba(255,255,255,0.08)', transition: 'width 0.4s ease' }} />
                     <div className="relative flex items-center justify-between px-3 py-2">
                       <span className="text-white text-xs font-medium flex items-center gap-1.5">

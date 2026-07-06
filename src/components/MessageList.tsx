@@ -15,9 +15,10 @@ interface Props {
   onAcceptChallenge?: (msg: Message) => void;
   onDeclineChallenge?: (msg: Message) => void;
   onRematchChallenge?: (msg: Message) => void;
+  onVotePoll?: (messageId: string, optionId: string) => void;
 }
 
-export function MessageList({ messages, myMood, theme, isOtherTyping, pinnedMessageIds = [], onLongPress, onReactionClick, onAcceptChallenge, onDeclineChallenge, onRematchChallenge }: Props) {
+export function MessageList({ messages, myMood, theme, isOtherTyping, pinnedMessageIds = [], onLongPress, onReactionClick, onAcceptChallenge, onDeclineChallenge, onRematchChallenge, onVotePoll }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -142,6 +143,7 @@ export function MessageList({ messages, myMood, theme, isOtherTyping, pinnedMess
                         onAcceptChallenge={() => onAcceptChallenge?.(message)}
                         onDeclineChallenge={() => onDeclineChallenge?.(message)}
                         onRematchChallenge={() => onRematchChallenge?.(message)}
+                        onVotePoll={onVotePoll}
                       />
                     </motion.div>
                   );

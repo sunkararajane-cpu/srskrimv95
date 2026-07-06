@@ -324,6 +324,17 @@ function VibeCard({
   const tapTimeout = useRef<any>(null);
   const overlayTimeout = useRef<any>(null);
 
+  // Component unmount cleanup to guarantee no audio leak
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
   // Sync play/pause with active state
   useEffect(() => {
     if (isActive) {
@@ -1960,14 +1971,16 @@ export default function VibesScreen() {
   // Keyboard arrows for desktop
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (isCreateOpen) return;
       if (e.key === 'ArrowDown') goNext();
       if (e.key === 'ArrowUp')   goPrev();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [goNext, goPrev]);
+  }, [goNext, goPrev, isCreateOpen]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (isCreateOpen) return;
     const container = e.currentTarget;
     const scrollPos = container.scrollTop;
     const height = container.clientHeight || 1;
