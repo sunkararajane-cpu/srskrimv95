@@ -1291,6 +1291,9 @@ function Composer({
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [videoUrlInput, setVideoUrlInput] = useState("");
 
+  const imageInputRef = React.useRef<HTMLInputElement | null>(null);
+  const videoInputRef = React.useRef<HTMLInputElement | null>(null);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -1765,227 +1768,243 @@ function Composer({
             </div>
           )}
 
-          {/* Interactive Selection Panels */}
-          {showTagSelector && (
-            <div className="bg-[#151520] border border-white/5 p-3 rounded-xl flex flex-col gap-2 mt-2">
-              <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Select Tag</span>
-              <div className="flex flex-wrap gap-1.5">
-                {PREDEFINED_TAGS.map((t) => (
-                  <button
-                    type="button"
-                    key={t}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setSelectedTag(t === selectedTag ? null : t);
-                      setShowTagSelector(false);
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border ${t === selectedTag ? "bg-purple-500/20 text-purple-200 border-purple-500/40" : "bg-white/5 text-white/70 border-transparent hover:bg-white/10"}`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {showSchedulePicker && (
-            <div className="bg-[#151520] border border-white/5 p-3 rounded-xl flex flex-col gap-2 mt-2">
-              <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Set Scheduled Date & Time</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="datetime-local"
-                  value={scheduledFor || ""}
-                  onChange={(e) => setScheduledFor(e.target.value)}
-                  className="bg-[#1A1A24] text-white text-xs font-bold border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-white/20 transition-all flex-1"
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowSchedulePicker(false);
-                  }}
-                  className="px-3 py-2 rounded-xl bg-white/5 text-white text-xs hover:bg-white/10 font-bold transition-all"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Image Attachment Panel */}
-          {showImageSelector && (
-            <div className="bg-[#151520] border border-white/5 p-4 rounded-xl flex flex-col gap-3 mt-2">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Attach Image</span>
-                <button
-                  type="button"
-                  onClick={() => setShowImageSelector(false)}
-                  className="text-[#888899] hover:text-white text-xs"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* URL Paste */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Paste image URL (https://...)"
-                  value={imageUrlInput}
-                  onChange={(e) => setImageUrlInput(e.target.value)}
-                  className="bg-[#1A1A24] text-white text-xs font-bold border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-white/20 transition-all flex-1"
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (imageUrlInput.trim()) {
-                      setAttachedImage(imageUrlInput.trim());
-                      setAttachedVideo(null);
-                      setImageUrlInput("");
-                      setShowImageSelector(false);
-                    }
-                  }}
-                  className="px-3 py-2 rounded-xl bg-purple-500/20 text-purple-200 border border-purple-500/30 text-xs hover:bg-purple-500/30 font-bold transition-all"
-                >
-                  Attach
-                </button>
-              </div>
-
-              {/* File Upload */}
-              <div className="relative">
-                <input
-                  type="file"
-                  id="image-file-upload"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="image-file-upload"
-                  className="flex items-center justify-center gap-2 border border-dashed border-white/10 hover:border-white/20 hover:bg-white/5 rounded-xl py-3 px-4 text-xs font-bold text-white/80 cursor-pointer transition-all text-center"
-                >
-                  <span>📁</span> Upload Image File
-                </label>
-              </div>
-
-              {/* Sample Gallery */}
-              <div className="flex flex-col gap-1.5 mt-1">
-                <span className="text-[9px] font-bold text-[#888899] uppercase tracking-widest">Or choose a sample image</span>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=400&q=80", label: "Tournament" },
-                    { url: "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?auto=format&fit=crop&w=400&q=80", label: "Keyboard" },
-                    { url: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=400&q=80", label: "Setup" },
-                    { url: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80", label: "Gaming" }
-                  ].map((img, i) => (
-                    <button
-                      type="button"
-                      key={i}
-                      onClick={() => {
-                        setAttachedImage(img.url);
-                        setAttachedVideo(null);
-                        setShowImageSelector(false);
-                      }}
-                      className="relative h-12 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-all active:scale-95 group"
-                      title={img.label}
-                    >
-                      <img src={img.url} alt={img.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <span className="text-[8px] font-black text-white tracking-wide uppercase px-1 bg-black/50 rounded">{img.label}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Video Attachment Panel */}
-          {showVideoSelector && (
-            <div className="bg-[#151520] border border-white/5 p-4 rounded-xl flex flex-col gap-3 mt-2">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Attach Video</span>
-                <button
-                  type="button"
-                  onClick={() => setShowVideoSelector(false)}
-                  className="text-[#888899] hover:text-white text-xs"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* URL Paste */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Paste direct MP4 video URL (https://...)"
-                  value={videoUrlInput}
-                  onChange={(e) => setVideoUrlInput(e.target.value)}
-                  className="bg-[#1A1A24] text-white text-xs font-bold border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-white/20 transition-all flex-1"
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (videoUrlInput.trim()) {
-                      setAttachedVideo(videoUrlInput.trim());
-                      setAttachedImage(null);
-                      setVideoUrlInput("");
-                      setShowVideoSelector(false);
-                    }
-                  }}
-                  className="px-3 py-2 rounded-xl bg-purple-500/20 text-purple-200 border border-purple-500/30 text-xs hover:bg-purple-500/30 font-bold transition-all"
-                >
-                  Attach
-                </button>
-              </div>
-
-              {/* File Upload */}
-              <div className="relative">
-                <input
-                  type="file"
-                  id="video-file-upload"
-                  accept="video/*"
-                  onChange={handleVideoUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="video-file-upload"
-                  className="flex items-center justify-center gap-2 border border-dashed border-white/10 hover:border-white/20 hover:bg-white/5 rounded-xl py-3 px-4 text-xs font-bold text-white/80 cursor-pointer transition-all text-center"
-                >
-                  <span>📁</span> Upload Video File
-                </label>
-              </div>
-
-              {/* Sample Gallery */}
-              <div className="flex flex-col gap-1.5 mt-1">
-                <span className="text-[9px] font-bold text-[#888899] uppercase tracking-widest">Or choose a premium sample loop</span>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { url: "https://player.vimeo.com/external/371433846.sd.mp4?s=236da2f3c054273b1e2d1a337af9f16cfc9c7f1a&profile_id=139&oauth2_token_id=57447761", label: "Abstract Tech" },
-                    { url: "https://player.vimeo.com/external/517616110.sd.mp4?s=d70bf03ee4054a01bc89a8fa0076a17b07df74b5&profile_id=165&oauth2_token_id=57447761", label: "Neon City" },
-                    { url: "https://player.vimeo.com/external/459389137.sd.mp4?s=89e40fa39e6a84d4fa7522f671c6d3dfd71c4c96&profile_id=165&oauth2_token_id=57447761", label: "Retro Gaming" }
-                  ].map((vid, i) => (
-                    <button
-                      type="button"
-                      key={i}
-                      onClick={() => {
-                        setAttachedVideo(vid.url);
-                        setAttachedImage(null);
-                        setShowVideoSelector(false);
-                      }}
-                      className="bg-[#1C1C28] border border-white/5 hover:border-white/20 p-2 rounded-xl flex flex-col items-center justify-center text-center gap-1.5 transition-all hover:bg-white/5 active:scale-95"
-                    >
-                      <span className="text-xl">🎬</span>
-                      <span className="text-[9px] font-extrabold text-white/80 uppercase tracking-wide leading-tight">{vid.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
+
+        {/* Active Selection Panels Drawer (Sits directly above toolbar, always visible when open) */}
+        <AnimatePresence>
+          {(showTagSelector || showSchedulePicker || showImageSelector || showVideoSelector) && (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 15 }}
+              className="px-4 py-3 shrink-0 max-h-[300px] overflow-y-auto border-t border-white/5 bg-[#12121A] flex flex-col gap-3 hide-scrollbar"
+            >
+              {/* Interactive Tag Selector */}
+              {showTagSelector && (
+                <div className="bg-[#151520] border border-white/5 p-3 rounded-xl flex flex-col gap-2">
+                  <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Select Tag</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PREDEFINED_TAGS.map((t) => (
+                      <button
+                        type="button"
+                        key={t}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setSelectedTag(t === selectedTag ? null : t);
+                          setShowTagSelector(false);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border ${t === selectedTag ? "bg-purple-500/20 text-purple-200 border-purple-500/40" : "bg-white/5 text-white/70 border-transparent hover:bg-white/10"}`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Interactive Schedule Selector */}
+              {showSchedulePicker && (
+                <div className="bg-[#151520] border border-white/5 p-3 rounded-xl flex flex-col gap-2">
+                  <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Set Scheduled Date & Time</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="datetime-local"
+                      value={scheduledFor || ""}
+                      onChange={(e) => setScheduledFor(e.target.value)}
+                      className="bg-[#1A1A24] text-white text-xs font-bold border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-white/20 transition-all flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setShowSchedulePicker(false);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-white/5 text-white text-xs hover:bg-white/10 font-bold transition-all"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Image Attachment Panel */}
+              {showImageSelector && (
+                <div className="bg-[#151520] border border-white/5 p-4 rounded-xl flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Attach Image</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowImageSelector(false)}
+                      className="text-[#888899] hover:text-white text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* URL Paste */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Paste image URL (https://...)"
+                      value={imageUrlInput}
+                      onChange={(e) => setImageUrlInput(e.target.value)}
+                      className="bg-[#1A1A24] text-white text-xs font-bold border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-white/20 transition-all flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (imageUrlInput.trim()) {
+                          setAttachedImage(imageUrlInput.trim());
+                          setAttachedVideo(null);
+                          setImageUrlInput("");
+                          setShowImageSelector(false);
+                        }
+                      }}
+                      className="px-3 py-2 rounded-xl bg-purple-500/20 text-purple-200 border border-purple-500/30 text-xs hover:bg-purple-500/30 font-bold transition-all"
+                    >
+                      Attach
+                    </button>
+                  </div>
+
+                  {/* File Upload via robust button/ref click */}
+                  <div className="relative">
+                    <input
+                      type="file"
+                      ref={imageInputRef}
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      className="w-full flex items-center justify-center gap-2 border border-dashed border-white/10 hover:border-white/20 hover:bg-white/5 rounded-xl py-3 px-4 text-xs font-bold text-white/80 cursor-pointer transition-all text-center"
+                    >
+                      <span>📁</span> Upload Image File
+                    </button>
+                  </div>
+
+                  {/* Sample Gallery */}
+                  <div className="flex flex-col gap-1.5 mt-1">
+                    <span className="text-[9px] font-bold text-[#888899] uppercase tracking-widest">Or choose a sample image</span>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=400&q=80", label: "Tournament" },
+                        { url: "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?auto=format&fit=crop&w=400&q=80", label: "Keyboard" },
+                        { url: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=400&q=80", label: "Setup" },
+                        { url: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80", label: "Gaming" }
+                      ].map((img, i) => (
+                        <button
+                          type="button"
+                          key={i}
+                          onClick={() => {
+                            setAttachedImage(img.url);
+                            setAttachedVideo(null);
+                            setShowImageSelector(false);
+                          }}
+                          className="relative h-12 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-all active:scale-95 group"
+                          title={img.label}
+                        >
+                          <img src={img.url} alt={img.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <span className="text-[8px] font-black text-white tracking-wide uppercase px-1 bg-black/50 rounded">{img.label}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Video Attachment Panel */}
+              {showVideoSelector && (
+                <div className="bg-[#151520] border border-white/5 p-4 rounded-xl flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Attach Video</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowVideoSelector(false)}
+                      className="text-[#888899] hover:text-white text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* URL Paste */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Paste direct MP4 video URL (https://...)"
+                      value={videoUrlInput}
+                      onChange={(e) => setVideoUrlInput(e.target.value)}
+                      className="bg-[#1A1A24] text-white text-xs font-bold border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-white/20 transition-all flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (videoUrlInput.trim()) {
+                          setAttachedVideo(videoUrlInput.trim());
+                          setAttachedImage(null);
+                          setVideoUrlInput("");
+                          setShowVideoSelector(false);
+                        }
+                      }}
+                      className="px-3 py-2 rounded-xl bg-purple-500/20 text-purple-200 border border-purple-500/30 text-xs hover:bg-purple-500/30 font-bold transition-all"
+                    >
+                      Attach
+                    </button>
+                  </div>
+
+                  {/* File Upload via robust button/ref click */}
+                  <div className="relative">
+                    <input
+                      type="file"
+                      ref={videoInputRef}
+                      accept="video/*"
+                      onChange={handleVideoUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => videoInputRef.current?.click()}
+                      className="w-full flex items-center justify-center gap-2 border border-dashed border-white/10 hover:border-white/20 hover:bg-white/5 rounded-xl py-3 px-4 text-xs font-bold text-white/80 cursor-pointer transition-all text-center"
+                    >
+                      <span>📁</span> Upload Video File
+                    </button>
+                  </div>
+
+                  {/* Sample Gallery */}
+                  <div className="flex flex-col gap-1.5 mt-1">
+                    <span className="text-[9px] font-bold text-[#888899] uppercase tracking-widest">Or choose a premium sample loop</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { url: "https://player.vimeo.com/external/371433846.sd.mp4?s=236da2f3c054273b1e2d1a337af9f16cfc9c7f1a&profile_id=139&oauth2_token_id=57447761", label: "Abstract Tech" },
+                        { url: "https://player.vimeo.com/external/517616110.sd.mp4?s=d70bf03ee4054a01bc89a8fa0076a17b07df74b5&profile_id=165&oauth2_token_id=57447761", label: "Neon City" },
+                        { url: "https://player.vimeo.com/external/459389137.sd.mp4?s=89e40fa39e6a84d4fa7522f671c6d3dfd71c4c96&profile_id=165&oauth2_token_id=57447761", label: "Retro Gaming" }
+                      ].map((vid, i) => (
+                        <button
+                          type="button"
+                          key={i}
+                          onClick={() => {
+                            setAttachedVideo(vid.url);
+                            setAttachedImage(null);
+                            setShowVideoSelector(false);
+                          }}
+                          className="bg-[#1C1C28] border border-white/5 hover:border-white/20 p-2 rounded-xl flex flex-col items-center justify-center text-center gap-1.5 transition-all hover:bg-white/5 active:scale-95"
+                        >
+                          <span className="text-xl">🎬</span>
+                          <span className="text-[9px] font-extrabold text-white/80 uppercase tracking-wide leading-tight">{vid.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Toolbar */}
         <div className="p-3 border-t border-white/5 shrink-0 flex items-center justify-between bg-[#111115]">
