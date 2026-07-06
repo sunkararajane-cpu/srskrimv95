@@ -732,15 +732,17 @@ export function MessageBubble({ message, isConsecutiveTop, isConsecutiveBottom, 
            }, 1500);
         };
         
+        const fileType = message.file.fileType || (message.file as any).type || 'file';
+        
         return (
           <div className="flex flex-col">
             <div className={`p-4 rounded-xl flex items-center gap-3 w-[260px] ${isMe ? 'bg-black/20 border border-white/10' : 'bg-black/40 border border-white/10'}`}>
-               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${message.file.fileType === 'pdf' ? 'bg-red-500/20 text-red-400' : message.file.fileType === 'excel' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
+               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${fileType === 'pdf' ? 'bg-red-500/20 text-red-400' : fileType === 'excel' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
                  <File size={24} />
                </div>
                <div className="flex-1 overflow-hidden flex flex-col justify-center">
                  <div className="text-white text-sm font-bold truncate mb-1">{message.file.name}</div>
-                 <div className="text-white/50 text-[11px] font-medium whitespace-nowrap">{message.file.size} · {message.file.fileType.toUpperCase()}</div>
+                 <div className="text-white/50 text-[11px] font-medium whitespace-nowrap">{message.file.size} · {fileType.toUpperCase()}</div>
                </div>
                
                {!isFileUploading && (

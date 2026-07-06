@@ -89,7 +89,8 @@ export function AttachmentPicker({ onSendPhoto, onSendVideo, onSendFile, onSendS
     const objectUrl = URL.createObjectURL(file);
     const sizeKb = file.size / 1024;
     const sizeLabel = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${Math.round(sizeKb)} KB`;
-    onSendFile({ name: file.name, size: sizeLabel, uri: objectUrl, isUpload: true, type: file.type.includes('pdf') ? 'pdf' : file.type.includes('image') ? 'image' : 'file' });
+    const computedType = file.type.includes('pdf') ? 'pdf' : file.type.includes('image') ? 'image' : 'file';
+    onSendFile({ name: file.name, size: sizeLabel, uri: objectUrl, isUpload: true, fileType: computedType, type: computedType });
     onClose();
   };
 
@@ -298,7 +299,7 @@ export function AttachmentPicker({ onSendPhoto, onSendVideo, onSendFile, onSendS
                 {MOCK_FILES.map((f, i) => (
                   <button 
                     key={i}
-                    onClick={() => { onSendFile(f); onClose(); }}
+                    onClick={() => { onSendFile({ ...f, fileType: f.type }); onClose(); }}
                     className="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 text-left"
                   >
                     <File size={20} className={f.type === 'pdf' ? 'text-red-400' : f.type === 'excel' ? 'text-green-400' : 'text-blue-400'} />
