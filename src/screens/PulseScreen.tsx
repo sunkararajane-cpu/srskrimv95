@@ -2726,13 +2726,25 @@ export default function PulseScreen() {
 
     setTimeout(async () => {
       const newPosts = assembleFeed(mood, page * 10, 10, [], tab);
-      const savedList: string[] = JSON.parse(localStorage.getItem('skrimchat_saved_posts') || '[]');
-      const likedList: string[] = JSON.parse(localStorage.getItem('skrimchat_liked_posts') || '[]');
-      const likeCounts: Record<string,number> = JSON.parse(localStorage.getItem('skrimchat_like_counts') || '{}');
-      const commentCounts: Record<string,number> = JSON.parse(localStorage.getItem('skrimchat_comment_counts') || '{}');
-      const shareCounts: Record<string,number> = JSON.parse(localStorage.getItem('skrimchat_share_counts') || '{}');
-      const myReactions: Record<string,string> = JSON.parse(localStorage.getItem('skrimchat_my_reactions') || '{}');
-      const reactionCounts: Record<string, Record<string,number>> = JSON.parse(localStorage.getItem('skrimchat_post_reactions') || '{}');
+      let savedList: string[] = [];
+      let likedList: string[] = [];
+      let likeCounts: Record<string,number> = {};
+      let commentCounts: Record<string,number> = {};
+      let shareCounts: Record<string,number> = {};
+      let myReactions: Record<string,string> = {};
+      let reactionCounts: Record<string, Record<string,number>> = {};
+
+      try {
+        savedList = JSON.parse(localStorage.getItem('skrimchat_saved_posts') || '[]');
+        likedList = JSON.parse(localStorage.getItem('skrimchat_liked_posts') || '[]');
+        likeCounts = JSON.parse(localStorage.getItem('skrimchat_like_counts') || '{}');
+        commentCounts = JSON.parse(localStorage.getItem('skrimchat_comment_counts') || '{}');
+        shareCounts = JSON.parse(localStorage.getItem('skrimchat_share_counts') || '{}');
+        myReactions = JSON.parse(localStorage.getItem('skrimchat_my_reactions') || '{}');
+        reactionCounts = JSON.parse(localStorage.getItem('skrimchat_post_reactions') || '{}');
+      } catch (e) {
+        console.error("Failed to parse some local storage items in loadPage:", e);
+      }
       const synced = newPosts.map(p => ({
         ...p,
         isSaved: savedList.includes(p.id),
@@ -2866,13 +2878,25 @@ export default function PulseScreen() {
 
   const doRefreshFetch = async () => {
     const fresh = assembleFeed(selectedMood, 0, 10, [], activeTab);
-    const saved: string[] = JSON.parse(localStorage.getItem('skrimchat_saved_posts') || '[]');
-    const liked: string[] = JSON.parse(localStorage.getItem('skrimchat_liked_posts') || '[]');
-    const counts: Record<string,number> = JSON.parse(localStorage.getItem('skrimchat_like_counts') || '{}');
-    const cc: Record<string,number> = JSON.parse(localStorage.getItem('skrimchat_comment_counts') || '{}');
-    const sc: Record<string,number> = JSON.parse(localStorage.getItem('skrimchat_share_counts') || '{}');
-    const myReactions: Record<string,string> = JSON.parse(localStorage.getItem('skrimchat_my_reactions') || '{}');
-    const reactionCounts: Record<string, Record<string,number>> = JSON.parse(localStorage.getItem('skrimchat_post_reactions') || '{}');
+    let saved: string[] = [];
+    let liked: string[] = [];
+    let counts: Record<string,number> = {};
+    let cc: Record<string,number> = {};
+    let sc: Record<string,number> = {};
+    let myReactions: Record<string,string> = {};
+    let reactionCounts: Record<string, Record<string,number>> = {};
+
+    try {
+      saved = JSON.parse(localStorage.getItem('skrimchat_saved_posts') || '[]');
+      liked = JSON.parse(localStorage.getItem('skrimchat_liked_posts') || '[]');
+      counts = JSON.parse(localStorage.getItem('skrimchat_like_counts') || '{}');
+      cc = JSON.parse(localStorage.getItem('skrimchat_comment_counts') || '{}');
+      sc = JSON.parse(localStorage.getItem('skrimchat_share_counts') || '{}');
+      myReactions = JSON.parse(localStorage.getItem('skrimchat_my_reactions') || '{}');
+      reactionCounts = JSON.parse(localStorage.getItem('skrimchat_post_reactions') || '{}');
+    } catch (e) {
+      console.error("Failed to parse local storage items in doRefreshFetch:", e);
+    }
     let reposts: any[] = [];
     let customPosts: any[] = [];
     try {
@@ -3051,7 +3075,12 @@ export default function PulseScreen() {
   };
 
   const handleSave = (postId: string) => {
-    const saved: string[] = JSON.parse(localStorage.getItem('skrimchat_saved_posts') || '[]');
+    let saved: string[] = [];
+    try {
+      saved = JSON.parse(localStorage.getItem('skrimchat_saved_posts') || '[]');
+    } catch (e) {
+      console.error("Failed to parse saved posts in handleSave:", e);
+    }
     const isSaving = !saved.includes(postId);
     const postObj = posts.find(p => p.id === postId) || posts.find(p => p.originalPost?.id === postId)?.originalPost;
     if (isSaving) {

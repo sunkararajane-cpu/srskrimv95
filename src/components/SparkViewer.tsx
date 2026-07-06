@@ -320,8 +320,13 @@ export function SparkViewer({
 
       // 2. Users from existing custom_chats (already chatted with)
       const storedChatsStr = localStorage.getItem('skrimchat_custom_chats');
-      const customChats = storedChatsStr ? JSON.parse(storedChatsStr) : {};
-      const customUsernames = Object.keys(customChats);
+      let customChats: any = {};
+      try {
+        customChats = storedChatsStr ? JSON.parse(storedChatsStr) : {};
+      } catch (e) {
+        console.error("Failed to parse custom chats:", e);
+      }
+      const customUsernames = Object.keys(customChats || {});
 
       // 3. All mockUsers that match Connect screen names or custom chats
       const inConnectUsers = mockUsers.filter(u =>
@@ -387,7 +392,7 @@ export function SparkViewer({
   }, [isActive, sparkIndex, userIndex, isMuted, spark?.audioUrl, spark?.music_url, spark?.id]);
 
   useEffect(() => {
-    if (activeSheet === "highlight") {
+    if (activeSheet === "highlight" || activeSheet === "create-highlight" || activeSheet === "highlight-options") {
       try {
         const raw = localStorage.getItem("skrimchat_highlights");
         console.log("highlights in storage:", raw);
@@ -732,9 +737,14 @@ export function SparkViewer({
   };
 
   const handleSave = () => {
-    let savedList = JSON.parse(
-      localStorage.getItem("skrimchat_saved_sparks") || "[]",
-    );
+    let savedList = [];
+    try {
+      savedList = JSON.parse(
+        localStorage.getItem("skrimchat_saved_sparks") || "[]",
+      );
+    } catch (e) {
+      console.error("Failed to parse saved sparks:", e);
+    }
     if (!Array.isArray(savedList)) savedList = [];
     let newList;
     if (isSaved) {
@@ -762,12 +772,24 @@ export function SparkViewer({
       showToast("No active spark selected");
       return;
     }
-    const hlIndex = highlights.findIndex((h) => h.id === hlId);
+    
+    let currentHighlights = [];
+    try {
+      const raw = localStorage.getItem("skrimchat_highlights");
+      currentHighlights = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(currentHighlights)) {
+        currentHighlights = [];
+      }
+    } catch (e) {
+      console.error("Failed to parse current highlights in handleAddToHighlight:", e);
+    }
+
+    const hlIndex = currentHighlights.findIndex((h: any) => h.id === hlId);
     if (hlIndex >= 0) {
-      const updatedHl = { ...highlights[hlIndex] };
+      const updatedHl = { ...currentHighlights[hlIndex] };
       if (!updatedHl.sparks) updatedHl.sparks = [];
       
-      const alreadyExists = updatedHl.sparks.some((s: any) => s.originalSparkId === spark.id || s === spark.id);
+      const alreadyExists = updatedHl.sparks.some((s: any) => s.originalSparkId === spark.id || s === spark.id || s.id === spark.id);
       if (!alreadyExists) {
         const highlightCopy = {
             ...spark,
@@ -787,7 +809,7 @@ export function SparkViewer({
               updatedHl.cover;
       }
 
-      const newList = [...highlights];
+      const newList = [...currentHighlights];
       newList[hlIndex] = updatedHl;
       localStorage.setItem("skrimchat_highlights", JSON.stringify(newList));
       setHighlights(newList);
@@ -804,6 +826,18 @@ export function SparkViewer({
       showToast("No active spark selected");
       return;
     }
+
+    let currentHighlights = [];
+    try {
+      const raw = localStorage.getItem("skrimchat_highlights");
+      currentHighlights = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(currentHighlights)) {
+        currentHighlights = [];
+      }
+    } catch (e) {
+      console.error("Failed to parse current highlights in handleCreateHighlight:", e);
+    }
+
     const highlightCopy = {
         ...spark,
         highlightId: `highlight_${Date.now()}`,
@@ -825,7 +859,7 @@ export function SparkViewer({
             "purple",
       sparks: [highlightCopy],
     };
-    const newList = [...highlights, newHl];
+    const newList = [...currentHighlights, newHl];
     localStorage.setItem("skrimchat_highlights", JSON.stringify(newList));
     setHighlights(newList);
     window.dispatchEvent(new Event("highlightSaved"));
@@ -1068,7 +1102,12 @@ export function SparkViewer({
     if (selectedContacts.length === 0) return;
 
     const storedChatsStr = localStorage.getItem('skrimchat_custom_chats');
-    const customChats = storedChatsStr ? JSON.parse(storedChatsStr) : {};
+    let customChats: any = {};
+    try {
+      customChats = storedChatsStr ? JSON.parse(storedChatsStr) : {};
+    } catch (e) {
+      console.error("Failed to parse custom chats in handleConnectSend:", e);
+    }
 
     selectedContacts.forEach(id => {
       const user = connectContacts.find((u: any) => u.id === id);
@@ -1988,40 +2027,6 @@ export function SparkViewer({
                               >
                                 <Share2 className="w-5 h-5 text-white" />
                               </button>
-                              {isOwnSpark && (
-                                <>
-                                  <button
-                                    onClick={handleSave}
-                                    className="w-12 h-12 bg-black/40 hover:bg-black/60 transition-colors backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 shrink-0 relative overflow-hidden group"
-                                  >
-                                    {isSaved && (
-                                      <motion.div
-                                        initial={{ scale: 0 }}
-                                        animate={{ scale: 1 }}
-                                        className="absolute inset-0 bg-[#B026FF] z-0"
-                                      />
-                                    )}
-                                    <motion.div
-                                      animate={
-                                        isBounceSave ? { scale: [1, 1.3, 1] } : {}
-                                      }
-                                      transition={{ duration: 0.3 }}
-                                      className="z-10"
-                                    >
-                                      <Bookmark
-                                        className={`w-5 h-5 ${isSaved ? "text-white fill-white" : "text-white"}`}
-                                      />
-                                    </motion.div>
-                                  </button>
-                                  <button
-                                    onClick={() => setActiveSheet("delete-confirm")}
-                                    className="w-12 h-12 bg-red-500/20 hover:bg-red-500/40 text-red-400 hover:text-red-300 transition-colors backdrop-blur-md rounded-full flex items-center justify-center border border-red-500/30 shrink-0 relative overflow-hidden group"
-                                    title="Delete Spark"
-                                  >
-                                    <Trash2 className="w-5 h-5" />
-                                  </button>
-                                </>
-                              )}
                             </div>
                           </>
                         ) : (
@@ -2069,29 +2074,6 @@ export function SparkViewer({
                             </div>
                           </div>
                         )}
-                      </div>
-                    </div>
-                  )}
-
-                  {isHighlightMode && group?.userId === "archive" && (
-                    <div
-                      className="w-full pb-safe-bottom z-30 transition-all duration-300 pointer-events-none shrink-0"
-                      style={{
-                        opacity: showUI ? 1 : 0,
-                        transform: showUI ? "translateY(0)" : "translateY(20px)",
-                        minHeight: "fit-content",
-                      }}
-                    >
-                      <div className="px-4 pb-4 pointer-events-auto flex justify-center">
-                        <button
-                          onClick={() => {
-                            handleOpenHighlightPicker();
-                          }}
-                          className="w-full max-w-xs flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-full bg-gradient-to-r from-[#B026FF] to-[#00F0FF] text-white hover:opacity-95 active:scale-[0.98] transition-all font-bold shadow-xl shadow-[#B026FF]/20"
-                        >
-                          <span className="text-xl leading-none">💜</span>
-                          <span className="text-sm tracking-wide">Add to Highlights</span>
-                        </button>
                       </div>
                     </div>
                   )}
