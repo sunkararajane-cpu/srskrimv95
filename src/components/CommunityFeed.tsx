@@ -14,6 +14,8 @@ import {
   Calendar,
   Users,
   Lock,
+  Image as ImageIcon,
+  Video as VideoIcon,
 } from "lucide-react";
 
 // MOCK FEED DATA
@@ -885,6 +887,31 @@ function PostCard({
             )}
           </div>
         )}
+
+        {/* Media Attachments */}
+        {!(isExclusive && !joined) && (
+          <>
+            {post.imageUrl && (
+              <div className="mt-3 rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                <img
+                  src={post.imageUrl}
+                  alt="Post Attachment"
+                  referrerPolicy="no-referrer"
+                  className="w-full h-auto max-h-[420px] object-cover hover:scale-[1.01] transition-transform duration-300"
+                />
+              </div>
+            )}
+            {post.videoUrl && (
+              <div className="mt-3 rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                <video
+                  src={post.videoUrl}
+                  controls
+                  className="w-full h-auto max-h-[420px] object-contain"
+                />
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <div className="h-px w-full bg-[rgba(255,255,255,0.06)] mt-2 relative z-10" />
@@ -1256,6 +1283,47 @@ function Composer({
   const [scheduledFor, setScheduledFor] = useState<string | null>(null);
   const [showSchedulePicker, setShowSchedulePicker] = useState(false);
 
+  // Media State
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [attachedVideo, setAttachedVideo] = useState<string | null>(null);
+  const [showImageSelector, setShowImageSelector] = useState(false);
+  const [showVideoSelector, setShowVideoSelector] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [videoUrlInput, setVideoUrlInput] = useState("");
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAttachedImage(reader.result as string);
+        setAttachedVideo(null);
+        setShowImageSelector(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const objectUrl = URL.createObjectURL(file);
+        setAttachedVideo(objectUrl);
+        setAttachedImage(null);
+        setShowVideoSelector(false);
+      } catch (err) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAttachedVideo(reader.result as string);
+          setAttachedImage(null);
+          setShowVideoSelector(false);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
   const PREDEFINED_TAGS = ["General", "Gaming", "Meme", "Strategy", "LFT", "Questions"];
 
   const roleBadge =
@@ -1269,7 +1337,7 @@ function Composer({
       ? pollQ.trim().length > 0 && pollOpts.filter((o) => o.trim()).length >= 2
       : postType === "event"
       ? eventTitle.trim().length > 0 && eventDate.length > 0
-      : content.trim().length > 0;
+      : content.trim().length > 0 || !!attachedImage || !!attachedVideo;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -1292,6 +1360,12 @@ function Composer({
     }
     if (scheduledFor) {
       post.scheduledFor = scheduledFor;
+    }
+    if (attachedImage) {
+      post.imageUrl = attachedImage;
+    }
+    if (attachedVideo) {
+      post.videoUrl = attachedVideo;
     }
 
     if (postType === "text" || postType === "announcement") {
@@ -1656,6 +1730,41 @@ function Composer({
             </div>
           )}
 
+          {/* Attached Media Preview */}
+          {(attachedImage || attachedVideo) && (
+            <div className="relative bg-[#151520] border border-white/5 p-3 rounded-2xl flex flex-col gap-2 mt-2">
+              <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Attached Media</span>
+              <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black/40">
+                {attachedImage && (
+                  <img
+                    src={attachedImage}
+                    alt="Attached preview"
+                    className="w-full h-auto max-h-[180px] object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                {attachedVideo && (
+                  <video
+                    src={attachedVideo}
+                    controls
+                    className="w-full h-auto max-h-[180px] object-contain"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAttachedImage(null);
+                    setAttachedVideo(null);
+                  }}
+                  className="absolute top-2 right-2 bg-black/75 hover:bg-red-600/90 text-white rounded-full p-1.5 transition-all shadow-lg active:scale-95"
+                  title="Remove Media"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Interactive Selection Panels */}
           {showTagSelector && (
             <div className="bg-[#151520] border border-white/5 p-3 rounded-xl flex flex-col gap-2 mt-2">
@@ -1702,17 +1811,193 @@ function Composer({
               </div>
             </div>
           )}
+
+          {/* Image Attachment Panel */}
+          {showImageSelector && (
+            <div className="bg-[#151520] border border-white/5 p-4 rounded-xl flex flex-col gap-3 mt-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Attach Image</span>
+                <button
+                  type="button"
+                  onClick={() => setShowImageSelector(false)}
+                  className="text-[#888899] hover:text-white text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* URL Paste */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Paste image URL (https://...)"
+                  value={imageUrlInput}
+                  onChange={(e) => setImageUrlInput(e.target.value)}
+                  className="bg-[#1A1A24] text-white text-xs font-bold border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-white/20 transition-all flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (imageUrlInput.trim()) {
+                      setAttachedImage(imageUrlInput.trim());
+                      setAttachedVideo(null);
+                      setImageUrlInput("");
+                      setShowImageSelector(false);
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-purple-500/20 text-purple-200 border border-purple-500/30 text-xs hover:bg-purple-500/30 font-bold transition-all"
+                >
+                  Attach
+                </button>
+              </div>
+
+              {/* File Upload */}
+              <div className="relative">
+                <input
+                  type="file"
+                  id="image-file-upload"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="image-file-upload"
+                  className="flex items-center justify-center gap-2 border border-dashed border-white/10 hover:border-white/20 hover:bg-white/5 rounded-xl py-3 px-4 text-xs font-bold text-white/80 cursor-pointer transition-all text-center"
+                >
+                  <span>📁</span> Upload Image File
+                </label>
+              </div>
+
+              {/* Sample Gallery */}
+              <div className="flex flex-col gap-1.5 mt-1">
+                <span className="text-[9px] font-bold text-[#888899] uppercase tracking-widest">Or choose a sample image</span>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=400&q=80", label: "Tournament" },
+                    { url: "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?auto=format&fit=crop&w=400&q=80", label: "Keyboard" },
+                    { url: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=400&q=80", label: "Setup" },
+                    { url: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80", label: "Gaming" }
+                  ].map((img, i) => (
+                    <button
+                      type="button"
+                      key={i}
+                      onClick={() => {
+                        setAttachedImage(img.url);
+                        setAttachedVideo(null);
+                        setShowImageSelector(false);
+                      }}
+                      className="relative h-12 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-all active:scale-95 group"
+                      title={img.label}
+                    >
+                      <img src={img.url} alt={img.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <span className="text-[8px] font-black text-white tracking-wide uppercase px-1 bg-black/50 rounded">{img.label}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Video Attachment Panel */}
+          {showVideoSelector && (
+            <div className="bg-[#151520] border border-white/5 p-4 rounded-xl flex flex-col gap-3 mt-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-[#888899] uppercase tracking-wider block">Attach Video</span>
+                <button
+                  type="button"
+                  onClick={() => setShowVideoSelector(false)}
+                  className="text-[#888899] hover:text-white text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* URL Paste */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Paste direct MP4 video URL (https://...)"
+                  value={videoUrlInput}
+                  onChange={(e) => setVideoUrlInput(e.target.value)}
+                  className="bg-[#1A1A24] text-white text-xs font-bold border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-white/20 transition-all flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (videoUrlInput.trim()) {
+                      setAttachedVideo(videoUrlInput.trim());
+                      setAttachedImage(null);
+                      setVideoUrlInput("");
+                      setShowVideoSelector(false);
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-purple-500/20 text-purple-200 border border-purple-500/30 text-xs hover:bg-purple-500/30 font-bold transition-all"
+                >
+                  Attach
+                </button>
+              </div>
+
+              {/* File Upload */}
+              <div className="relative">
+                <input
+                  type="file"
+                  id="video-file-upload"
+                  accept="video/*"
+                  onChange={handleVideoUpload}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="video-file-upload"
+                  className="flex items-center justify-center gap-2 border border-dashed border-white/10 hover:border-white/20 hover:bg-white/5 rounded-xl py-3 px-4 text-xs font-bold text-white/80 cursor-pointer transition-all text-center"
+                >
+                  <span>📁</span> Upload Video File
+                </label>
+              </div>
+
+              {/* Sample Gallery */}
+              <div className="flex flex-col gap-1.5 mt-1">
+                <span className="text-[9px] font-bold text-[#888899] uppercase tracking-widest">Or choose a premium sample loop</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { url: "https://player.vimeo.com/external/371433846.sd.mp4?s=236da2f3c054273b1e2d1a337af9f16cfc9c7f1a&profile_id=139&oauth2_token_id=57447761", label: "Abstract Tech" },
+                    { url: "https://player.vimeo.com/external/517616110.sd.mp4?s=d70bf03ee4054a01bc89a8fa0076a17b07df74b5&profile_id=165&oauth2_token_id=57447761", label: "Neon City" },
+                    { url: "https://player.vimeo.com/external/459389137.sd.mp4?s=89e40fa39e6a84d4fa7522f671c6d3dfd71c4c96&profile_id=165&oauth2_token_id=57447761", label: "Retro Gaming" }
+                  ].map((vid, i) => (
+                    <button
+                      type="button"
+                      key={i}
+                      onClick={() => {
+                        setAttachedVideo(vid.url);
+                        setAttachedImage(null);
+                        setShowVideoSelector(false);
+                      }}
+                      className="bg-[#1C1C28] border border-white/5 hover:border-white/20 p-2 rounded-xl flex flex-col items-center justify-center text-center gap-1.5 transition-all hover:bg-white/5 active:scale-95"
+                    >
+                      <span className="text-xl">🎬</span>
+                      <span className="text-[9px] font-extrabold text-white/80 uppercase tracking-wide leading-tight">{vid.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Toolbar */}
         <div className="p-3 border-t border-white/5 shrink-0 flex items-center justify-between bg-[#111115]">
-          <div className="flex items-center gap-2 text-[#888899]">
+          <div className="flex items-center gap-2 text-[#888899] flex-wrap">
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 setShowTagSelector(!showTagSelector);
                 setShowSchedulePicker(false);
+                setShowImageSelector(false);
+                setShowVideoSelector(false);
               }}
               className={`p-2 transition-colors rounded-full flex items-center gap-1 ${showTagSelector ? "text-white bg-white/10" : "hover:text-white hover:bg-white/5"}`}
             >
@@ -1725,11 +2010,41 @@ function Composer({
                 e.preventDefault();
                 setShowSchedulePicker(!showSchedulePicker);
                 setShowTagSelector(false);
+                setShowImageSelector(false);
+                setShowVideoSelector(false);
               }}
               className={`p-2 transition-colors rounded-full flex items-center gap-1 ${showSchedulePicker ? "text-white bg-white/10" : "hover:text-white hover:bg-white/5"}`}
             >
               <span className="text-lg leading-none">📅</span>{" "}
               <span className="text-[12px] font-bold">Schedule</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowImageSelector(!showImageSelector);
+                setShowVideoSelector(false);
+                setShowTagSelector(false);
+                setShowSchedulePicker(false);
+              }}
+              className={`p-2 transition-colors rounded-full flex items-center gap-1 ${showImageSelector ? "text-white bg-white/10" : "hover:text-white hover:bg-white/5"}`}
+            >
+              <span className="text-lg leading-none">🖼</span>{" "}
+              <span className="text-[12px] font-bold">Image</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowVideoSelector(!showVideoSelector);
+                setShowImageSelector(false);
+                setShowTagSelector(false);
+                setShowSchedulePicker(false);
+              }}
+              className={`p-2 transition-colors rounded-full flex items-center gap-1 ${showVideoSelector ? "text-white bg-white/10" : "hover:text-white hover:bg-white/5"}`}
+            >
+              <span className="text-lg leading-none">🎥</span>{" "}
+              <span className="text-[12px] font-bold">Video</span>
             </button>
             <button
               type="button"
