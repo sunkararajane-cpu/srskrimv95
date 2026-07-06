@@ -78,38 +78,12 @@ export function BondDetailModal({ chatId, contactName, flow, onClose, onUpdate }
                 <div className="flex justify-between text-xs mb-1 font-bold">
                    <span className="text-white">Progress</span>
                    <span className="text-green-400">Today ✓</span>
-                </div>
-                <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden mb-2">
-                   <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 w-full" />
-                </div>
-                <p className="text-white/60 text-xs">Send today to keep the flow alive! 🔥</p>
+                 </div>
+                 <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden mb-2">
+                    <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 w-full" />
+                 </div>
+                 <p className="text-white/60 text-xs">Send today to keep the flow alive! 🔥</p>
             </div>
-
-            {flow.freezesLeft > 0 && !flow.isFrozen && (
-               <button onClick={handleFreeze} className="w-full p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center gap-3 mb-4 hover:bg-blue-500/20 transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                    <Snowflake size={20} />
-                  </div>
-                  <div className="flex-1 text-left">
-                     <div className="text-blue-300 font-bold text-sm">Use Flow Freeze</div>
-                     <div className="text-blue-300/60 text-xs">Protects your flow for 1 day · {flow.freezesLeft} left</div>
-                  </div>
-               </button>
-            )}
-
-            {flow.isFrozen && (
-               <div className="w-full p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center gap-2 mb-4">
-                  <Snowflake size={16} className="text-blue-400" />
-                  <span className="text-blue-300 font-bold text-sm">Flow Protected! 🧊</span>
-               </div>
-            )}
-
-            <button 
-              onClick={() => setShowShare(true)}
-              className="w-full py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
-            >
-              <Share2 size={18} /> Share Flow
-            </button>
         </div>
       </motion.div>
     </div>
