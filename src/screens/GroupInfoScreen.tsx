@@ -18,6 +18,7 @@ import {
   Play,
   Share2,
   X,
+  Image,
 } from "lucide-react";
 import { CHAT_THEMES } from "../constants/themes";
 import { MOCK_CHATS } from "../lib/mock/mockChatDirectory";
@@ -731,7 +732,7 @@ export default function GroupInfoScreen() {
         {/* Identity Section */}
         <div className="flex flex-col items-center pt-8 pb-6 bg-[#0A0A0C]">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-500 to-red-500 border border-white/10 flex items-center justify-center text-5xl mb-4 shadow-lg shadow-orange-500/20 overflow-hidden">
-            {group.avatar.startsWith('http') ? (
+            {group.avatar.startsWith('http') || group.avatar.startsWith('data:image/') ? (
               <img src={group.avatar} alt={group.name} className="w-full h-full object-cover" />
             ) : (
               group.avatar
@@ -1125,8 +1126,55 @@ export default function GroupInfoScreen() {
               <div className="space-y-4">
                 {/* Group Avatar Picker */}
                 <div>
-                  <label className="text-white/60 text-xs font-bold uppercase tracking-wider block mb-2">
-                    Group Avatar
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-white/60 text-xs font-bold uppercase tracking-wider">
+                      Group Avatar
+                    </label>
+                    <span className="text-white/30 text-[10px]">Emoji or custom photo</span>
+                  </div>
+                  
+                  {/* Custom Photo Preview / Selector */}
+                  <div className="flex gap-3 items-center mb-4 p-3 bg-white/5 border border-white/5 rounded-xl">
+                    <div className="w-16 h-16 rounded-xl bg-[#252530] border border-white/10 flex items-center justify-center text-3xl overflow-hidden shrink-0">
+                      {editAvatar.startsWith('http') || editAvatar.startsWith('data:image/') ? (
+                        <img src={editAvatar} alt="Group Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        editAvatar
+                      )}
+                    </div>
+                    <div className="flex-1 flex flex-col gap-1.5">
+                      <span className="text-white text-xs font-bold">Upload Custom Photo</span>
+                      <p className="text-white/50 text-[11px]">Choose a clean picture from your gallery</p>
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById('group-photo-upload')?.click()}
+                        className="self-start px-3 py-1.5 rounded-lg bg-[#00F0FF]/15 text-[#00F0FF] text-xs font-bold hover:bg-[#00F0FF]/25 transition-all flex items-center gap-1"
+                      >
+                        <Image className="w-3.5 h-3.5" /> Browse Gallery
+                      </button>
+                      <input
+                        id="group-photo-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              if (event.target?.result) {
+                                setEditAvatar(event.target.result as string);
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <label className="text-white/40 text-[11px] font-medium block mb-2">
+                    Or select an Emoji:
                   </label>
                   <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                     {['🔥', '⚡', '👑', '🎮', '🏏', '💃', '🌍', '🎵', '🚀', '💜', '🌟', '🎭', '🤝'].map((emoji) => (
@@ -1134,7 +1182,7 @@ export default function GroupInfoScreen() {
                         key={emoji}
                         type="button"
                         onClick={() => setEditAvatar(emoji)}
-                        className={`w-12 h-12 rounded-xl shrink-0 flex items-center justify-center text-2xl transition-all ${
+                        className={`w-11 h-11 rounded-xl shrink-0 flex items-center justify-center text-xl transition-all ${
                           editAvatar === emoji
                             ? "bg-[#00F0FF]/20 border-2 border-[#00F0FF] scale-110 shadow-lg shadow-[#00F0FF]/20"
                             : "bg-white/5 border border-white/10 hover:bg-white/10"
