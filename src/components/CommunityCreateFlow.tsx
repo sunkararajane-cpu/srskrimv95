@@ -36,6 +36,15 @@ const QUICK_RULES = [
   "18+ only"
 ];
 
+const QUICK_ADMIN_RULES = [
+  "Lead by example",
+  "Fair moderation",
+  "Protect user privacy",
+  "Active response",
+  "Collaborative actions",
+  "No abusive bans"
+];
+
 function generateInitials(name?: string) {
   if (!name || !name.trim()) return "?";
   const words = name.trim().split(" ");
@@ -66,6 +75,7 @@ export function CommunityCreateFlow({ onClose }: CreateFlowProps) {
     atmosphere: "nebula",
     category: "",
     rules: [] as string[],
+    adminRules: [] as string[],
     paid: false,
     price: "",
     cover: ""
@@ -105,6 +115,7 @@ export function CommunityCreateFlow({ onClose }: CreateFlowProps) {
       description: formData.desc,
       category: formData.category,
       rules: formData.rules,
+      adminRules: formData.adminRules,
       paid: formData.paid,
       price: formData.price || null,
       members: 1,
@@ -592,39 +603,81 @@ function Step3Category({ data, onChange, onNext, activeColors }: any) {
 }
 
 function Step4Rules({ data, onChange, onNext, activeColors }: any) {
+  const [activeTab, setActiveTab] = useState<"member" | "admin">("member");
   const [customRule, setCustomRule] = useState("");
   const [showInput, setShowInput] = useState(false);
-  
+
+  const currentRules = activeTab === "member" ? (data.rules || []) : (data.adminRules || []);
+  const presets = activeTab === "member" ? QUICK_RULES : QUICK_ADMIN_RULES;
+
   const addRule = (rule: string) => {
-    if (data.rules.length < 5) onChange({ rules: [...data.rules, rule] });
+    if (currentRules.length < 5) {
+      if (activeTab === "member") {
+        onChange({ rules: [...(data.rules || []), rule] });
+      } else {
+        onChange({ adminRules: [...(data.adminRules || []), rule] });
+      }
+    }
   };
+
   const removeRule = (index: number) => {
-    const newRules = [...data.rules];
+    const newRules = [...currentRules];
     newRules.splice(index, 1);
-    onChange({ rules: newRules });
+    if (activeTab === "member") {
+      onChange({ rules: newRules });
+    } else {
+      onChange({ adminRules: newRules });
+    }
   };
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col h-full">
-      <h2 className="text-xl font-bold text-white flex items-center gap-2"><span className="text-[#888899]">✦</span> Set your world rules</h2>
-      <p className="text-[#888899] text-[13px] mb-6 leading-relaxed">(optional but recommended)</p>
+      <h2 className="text-xl font-bold text-white flex items-center gap-2"><span className="text-[#888899]">✦</span> Set world guidelines</h2>
+      <p className="text-[#888899] text-[13px] mb-4 leading-relaxed">Establish rules for both regular members and world moderators.</p>
+
+      {/* Rules Type Selector Tabs */}
+      <div className="flex bg-white/5 p-1 rounded-xl mb-5 border border-white/5">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("member");
+            setShowInput(false);
+            setCustomRule("");
+          }}
+          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === "member" ? "bg-[#1A1A24] text-white shadow-sm border border-white/5" : "text-[#888899] hover:text-white"}`}
+        >
+          👥 Member Rules
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("admin");
+            setShowInput(false);
+            setCustomRule("");
+          }}
+          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === "admin" ? "bg-[#1A1A24] text-white shadow-sm border border-white/5" : "text-[#888899] hover:text-white"}`}
+        >
+          🛡️ Admin Rules
+        </button>
+      </div>
       
-      <div className="flex flex-col gap-6 flex-1 overflow-y-auto hide-scrollbar">
+      <div className="flex flex-col gap-5 flex-1 overflow-y-auto hide-scrollbar">
          {/* Quick Add */}
          <div>
            <p className="text-[10px] font-bold text-white uppercase tracking-widest mb-3 flex items-center justify-between">
-             Quick Add <span className="text-[#888899] font-normal lowercase">{data.rules.length}/5 rules</span>
+             Quick Add <span className="text-[#888899] font-normal lowercase">{currentRules.length}/5 rules</span>
            </p>
            <div className="flex flex-wrap gap-2">
-             {QUICK_RULES.map(rule => {
-               const added = data.rules.includes(rule);
+             {presets.map(rule => {
+               const added = currentRules.includes(rule);
                return (
                  <button 
+                   type="button"
                    key={rule}
-                   disabled={added || data.rules.length >= 5}
+                   disabled={added || currentRules.length >= 5}
                    onClick={() => addRule(rule)}
                    className={`px-3 py-1.5 rounded-full border text-[12px] font-medium transition-colors ${
-                     added ? 'bg-white/5 border-white/5 text-[#888899]/50' : 'bg-transparent border-white/10 text-[#888899] hover:text-white hover:border-white/30'
+                     added ? 'bg-white/5 border-white/5 text-[#888899]/30' : 'bg-transparent border-white/10 text-[#888899] hover:text-white hover:border-white/30'
                    }`}
                  >
                    + {rule}
@@ -636,20 +689,24 @@ function Step4Rules({ data, onChange, onNext, activeColors }: any) {
 
          {/* Your Rules */}
          <div>
-           <p className="text-[10px] font-bold text-white uppercase tracking-widest mb-3">Your Rules</p>
-           {data.rules.length === 0 ? (
-             <p className="text-[#888899] text-[13px] italic bg-white/5 p-4 rounded-xl border border-white/5">No rules added yet.</p>
+           <p className="text-[10px] font-bold text-white uppercase tracking-widest mb-3">
+             Active {activeTab === "member" ? "Member" : "Admin"} Rules
+           </p>
+           {currentRules.length === 0 ? (
+             <p className="text-[#888899] text-[13px] italic bg-white/5 p-4 rounded-xl border border-white/5">
+               No {activeTab === "member" ? "member" : "admin"} rules added yet.
+             </p>
            ) : (
              <div className="flex flex-col gap-2">
                <AnimatePresence>
-                 {data.rules?.map((rule: string, i: number) => (
+                 {currentRules.map((rule: string, i: number) => (
                    <motion.div 
                      initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
                      key={i} className="flex items-center gap-3 bg-[#1A1A24] border border-white/5 p-3 rounded-xl group"
                    >
                      <span className="text-[#888899] font-bold text-[12px] w-4 text-center">{i+1}.</span>
                      <span className="flex-1 text-[14px] text-white/90">{rule}</span>
-                     <button onClick={() => removeRule(i)} className="text-[#888899] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1">
+                     <button type="button" onClick={() => removeRule(i)} className="text-[#888899] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1">
                        <X className="w-4 h-4" />
                      </button>
                    </motion.div>
@@ -658,7 +715,7 @@ function Step4Rules({ data, onChange, onNext, activeColors }: any) {
              </div>
            )}
            
-           {data.rules.length < 5 && (
+           {currentRules.length < 5 && (
              <div className="mt-3">
                {showInput ? (
                  <div className="flex items-center gap-2">
@@ -666,7 +723,7 @@ function Step4Rules({ data, onChange, onNext, activeColors }: any) {
                      type="text" 
                      value={customRule} 
                      onChange={e => setCustomRule(e.target.value.substring(0, 50))}
-                     placeholder="Type a rule..." 
+                     placeholder={activeTab === "member" ? "Type a member rule..." : "Type an admin rule..."} 
                      className="flex-1 bg-[#1A1A24] border border-white/10 p-3 rounded-xl text-[13px] text-white outline-none"
                      autoFocus
                      onKeyDown={e => {
@@ -677,11 +734,11 @@ function Step4Rules({ data, onChange, onNext, activeColors }: any) {
                        }
                      }}
                    />
-                   <button onClick={() => { if(customRule.trim()) addRule(customRule.trim()); setCustomRule(""); setShowInput(false); }} className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20"><Check className="w-4 h-4 text-white" /></button>
+                   <button type="button" onClick={() => { if(customRule.trim()) addRule(customRule.trim()); setCustomRule(""); setShowInput(false); }} className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20"><Check className="w-4 h-4 text-white" /></button>
                  </div>
                ) : (
-                 <button onClick={() => setShowInput(true)} className="flex items-center gap-2 text-[13px] font-bold text-[#888899] hover:text-white p-2">
-                   + Add custom rule
+                 <button type="button" onClick={() => setShowInput(true)} className="flex items-center gap-2 text-[13px] font-bold text-[#888899] hover:text-white p-2">
+                   + Add custom {activeTab === "member" ? "member" : "admin"} rule
                  </button>
                )}
              </div>
@@ -690,17 +747,12 @@ function Step4Rules({ data, onChange, onNext, activeColors }: any) {
       </div>
 
       <div className="flex gap-3 mt-4 shrink-0">
-        {data.rules.length === 0 && (
-          <button onClick={onNext} className="flex-[0.5] py-4 rounded-xl font-bold uppercase tracking-widest text-[12px] text-[#888899] bg-transparent hover:bg-white/5 transition-colors border border-white/5">
-            Skip
-          </button>
-        )}
         <button 
           onClick={onNext}
           className="flex-1 py-4 rounded-xl font-bold text-white uppercase tracking-widest text-[13px] transition-all shadow-md"
           style={{ background: `linear-gradient(to right, ${activeColors[0]}, ${activeColors[1]})` }}
         >
-          {data.rules.length === 0 ? "Skip & Next →" : "Next →"}
+          Next →
         </button>
       </div>
     </motion.div>

@@ -15,6 +15,8 @@ import {
   X,
   Lock,
   ChevronRight,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { useWorlds, useWorldMembership } from "../hooks/useWorldMembership";
 import { CommunityFeed } from "../components/CommunityFeed";
@@ -447,7 +449,7 @@ export default function WorldDetailScreen() {
             <MembersTab key="members" world={world} colors={colors} joined={joined} />
           )}
           {activeTab === "about" && (
-            <AboutTab key="about" world={world} colors={colors} />
+            <AboutTab key="about" world={world} colors={colors} isAdmin={level === "admin"} />
           )}
         </AnimatePresence>
       </div>
@@ -1538,14 +1540,88 @@ function MembersTab({
   );
 }
 
+const DEFAULT_MEMBER_RULES = [
+  "Respect all members of the world.",
+  "No spam, self-promo, or advertising.",
+  "Stay on topic and keep content relevant.",
+  "No hate speech, harassment, or toxicity.",
+  "Follow general community standards."
+];
+
+const DEFAULT_ADMIN_RULES = [
+  "Lead by example: Set a constructive, friendly tone.",
+  "Fair moderation: Handle flags objectively without bias.",
+  "Active presence: Keep spam and hostile conflicts out.",
+  "Respect privacy: Keep member data and logs private.",
+  "Collaborative bans: Consult with co-admins before banning."
+];
+
 function AboutTab({
   world,
   colors,
+  isAdmin,
 }: {
   world: any;
   colors: string[];
+  isAdmin?: boolean;
   key?: React.Key;
 }) {
+  const [memberRules, setMemberRules] = useState<string[]>(() => {
+    return (world.rules && world.rules.length > 0) ? world.rules : DEFAULT_MEMBER_RULES;
+  });
+
+  const [adminRules, setAdminRules] = useState<string[]>(() => {
+    return (world.adminRules && world.adminRules.length > 0) ? world.adminRules : DEFAULT_ADMIN_RULES;
+  });
+
+  const [activeRulesSubTab, setActiveRulesSubTab] = useState<"member" | "admin">("member");
+  const [newRuleText, setNewRuleText] = useState("");
+  const [showAddRuleInput, setShowAddRuleInput] = useState(false);
+
+  // Sync state if world rules change
+  useEffect(() => {
+    if (world.rules && world.rules.length > 0) {
+      setMemberRules(world.rules);
+    } else {
+      setMemberRules(DEFAULT_MEMBER_RULES);
+    }
+    if (world.adminRules && world.adminRules.length > 0) {
+      setAdminRules(world.adminRules);
+    } else {
+      setAdminRules(DEFAULT_ADMIN_RULES);
+    }
+  }, [world.rules, world.adminRules]);
+
+  const saveRules = (updatedMember: string[], updatedAdmin: string[]) => {
+    setMemberRules(updatedMember);
+    setAdminRules(updatedAdmin);
+
+    // Save to localStorage
+    const allStr = localStorage.getItem('worlds_all');
+    if (allStr) {
+      try {
+        const allArr = JSON.parse(allStr);
+        if (Array.isArray(allArr)) {
+          const updated = allArr.map((w: any) => {
+            if (w.id === world.id) {
+              return {
+                ...w,
+                rules: updatedMember,
+                adminRules: updatedAdmin
+              };
+            }
+            return w;
+          });
+          localStorage.setItem('worlds_all', JSON.stringify(updated));
+          // Notify store / other components
+          window.dispatchEvent(new Event('worlds_updated'));
+        }
+      } catch (e) {
+        console.error("Error saving rules to localStorage", e);
+      }
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -1609,22 +1685,150 @@ function AboutTab({
 
       {/* Rules */}
       <div>
-        <div className="bg-[#111115] rounded-2xl border border-white/5 overflow-hidden shadow-sm">
-          <div className="bg-white/5 px-4 py-3 border-b border-white/5 flex items-center gap-2">
-            <span className="text-lg">📜</span>
-            <h3 className="text-[13px] font-bold text-white uppercase tracking-wider">
-              World Rules
-            </h3>
+        <div className="bg-[#111115] rounded-2xl border border-white/5 overflow-hidden shadow-lg">
+          <div className="bg-white/5 px-4 py-3 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📜</span>
+              <h3 className="text-[13px] font-bold text-white uppercase tracking-wider">
+                World Guidelines
+              </h3>
+            </div>
+            
+            {/* Rules Sub-Tabs selector */}
+            <div className="flex bg-[#151520] p-0.5 rounded-lg border border-white/5 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveRulesSubTab("member");
+                  setShowAddRuleInput(false);
+                  setNewRuleText("");
+                }}
+                className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all ${activeRulesSubTab === "member" ? "bg-white/5 text-white border border-white/5" : "text-[#888899] hover:text-white"}`}
+              >
+                👥 Member Rules
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveRulesSubTab("admin");
+                  setShowAddRuleInput(false);
+                  setNewRuleText("");
+                }}
+                className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all ${activeRulesSubTab === "admin" ? "bg-white/5 text-white border border-white/5" : "text-[#888899] hover:text-white"}`}
+              >
+                🛡️ Admin Rules
+              </button>
+            </div>
           </div>
-          <div className="p-4 flex flex-col gap-3">
-            {world.rules?.map((rule: string, i: number) => (
-              <div key={i} className="flex items-start gap-3">
-                <span className="text-[13px] font-bold text-[#888899] mt-[1px]">
-                  {i + 1}.
-                </span>
-                <p className="text-[14px] text-white/90">{rule}</p>
+
+          <div className="p-5 flex flex-col gap-4">
+            {/* Sub-header description */}
+            <p className="text-xs text-[#888899] italic leading-relaxed">
+              {activeRulesSubTab === "member" 
+                ? "Rules that all community members must follow to keep this world safe, civil, and aligned with its core theme." 
+                : "Operational guidelines and standards of conduct for world creators, administrators, and moderators."}
+            </p>
+
+            <div className="flex flex-col gap-3">
+              {(activeRulesSubTab === "member" ? memberRules : adminRules).map((rule: string, i: number) => (
+                <div key={i} className="flex items-start justify-between gap-3 bg-[#13131D] border border-white/[0.02] p-3 rounded-xl group transition-all hover:border-white/5">
+                  <div className="flex items-start gap-3 flex-1">
+                    <span className="text-[13px] font-bold text-[#888899] mt-[1.5px] w-5 text-center">
+                      {i + 1}.
+                    </span>
+                    <p className="text-[14px] text-white/90 leading-relaxed">{rule}</p>
+                  </div>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeRulesSubTab === "member") {
+                          const updated = memberRules.filter((_, idx) => idx !== i);
+                          saveRules(updated, adminRules);
+                        } else {
+                          const updated = adminRules.filter((_, idx) => idx !== i);
+                          saveRules(memberRules, updated);
+                        }
+                      }}
+                      className="text-[#888899] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      title="Remove Rule"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Admin Add Rule section */}
+            {isAdmin && (
+              <div className="mt-2 border-t border-white/5 pt-4">
+                {showAddRuleInput ? (
+                  <div className="flex flex-col gap-2.5">
+                    <input
+                      type="text"
+                      placeholder={activeRulesSubTab === "member" ? "Add member rule (e.g., No spamming)..." : "Add admin/mod rule..."}
+                      value={newRuleText}
+                      onChange={(e) => setNewRuleText(e.target.value.substring(0, 80))}
+                      className="w-full bg-[#1A1A24] text-white text-xs font-bold border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/20 transition-all"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newRuleText.trim()) {
+                          const rule = newRuleText.trim();
+                          if (activeRulesSubTab === "member") {
+                            saveRules([...memberRules, rule], adminRules);
+                          } else {
+                            saveRules(memberRules, [...adminRules, rule]);
+                          }
+                          setNewRuleText("");
+                          setShowAddRuleInput(false);
+                        }
+                      }}
+                    />
+                    <div className="flex items-center gap-2 self-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddRuleInput(false);
+                          setNewRuleText("");
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-white/5 text-white text-xs hover:bg-white/10 font-bold transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newRuleText.trim()) {
+                            const rule = newRuleText.trim();
+                            if (activeRulesSubTab === "member") {
+                              saveRules([...memberRules, rule], adminRules);
+                            } else {
+                              saveRules(memberRules, [...adminRules, rule]);
+                            }
+                          }
+                          setNewRuleText("");
+                          setShowAddRuleInput(false);
+                        }}
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md text-white"
+                        style={{
+                          background: `linear-gradient(to right, ${colors[0]}, ${colors[1] || colors[0]})`,
+                        }}
+                      >
+                        Add Rule
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddRuleInput(true)}
+                    className="flex items-center gap-1.5 text-xs font-bold text-[#888899] hover:text-white transition-all"
+                  >
+                    <Plus className="w-4 h-4" /> Add custom {activeRulesSubTab === "member" ? "member" : "admin"} rule
+                  </button>
+                )}
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
