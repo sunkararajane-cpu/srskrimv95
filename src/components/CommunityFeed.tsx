@@ -1340,7 +1340,7 @@ function Composer({
       ? pollQ.trim().length > 0 && pollOpts.filter((o) => o.trim()).length >= 2
       : postType === "event"
       ? eventTitle.trim().length > 0 && eventDate.length > 0
-      : content.trim().length > 0 || !!attachedImage || !!attachedVideo;
+      : content.trim().length > 0 || (isAdmin && (!!attachedImage || !!attachedVideo));
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -1364,10 +1364,10 @@ function Composer({
     if (scheduledFor) {
       post.scheduledFor = scheduledFor;
     }
-    if (attachedImage) {
+    if (isAdmin && attachedImage) {
       post.imageUrl = attachedImage;
     }
-    if (attachedVideo) {
+    if (isAdmin && attachedVideo) {
       post.videoUrl = attachedVideo;
     }
 
@@ -2037,34 +2037,38 @@ function Composer({
               <span className="text-lg leading-none">📅</span>{" "}
               <span className="text-[12px] font-bold">Schedule</span>
             </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                setShowImageSelector(!showImageSelector);
-                setShowVideoSelector(false);
-                setShowTagSelector(false);
-                setShowSchedulePicker(false);
-              }}
-              className={`p-2 transition-colors rounded-full flex items-center gap-1 ${showImageSelector ? "text-white bg-white/10" : "hover:text-white hover:bg-white/5"}`}
-            >
-              <span className="text-lg leading-none">🖼</span>{" "}
-              <span className="text-[12px] font-bold">Image</span>
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                setShowVideoSelector(!showVideoSelector);
-                setShowImageSelector(false);
-                setShowTagSelector(false);
-                setShowSchedulePicker(false);
-              }}
-              className={`p-2 transition-colors rounded-full flex items-center gap-1 ${showVideoSelector ? "text-white bg-white/10" : "hover:text-white hover:bg-white/5"}`}
-            >
-              <span className="text-lg leading-none">🎥</span>{" "}
-              <span className="text-[12px] font-bold">Video</span>
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowImageSelector(!showImageSelector);
+                  setShowVideoSelector(false);
+                  setShowTagSelector(false);
+                  setShowSchedulePicker(false);
+                }}
+                className={`p-2 transition-colors rounded-full flex items-center gap-1 ${showImageSelector ? "text-white bg-white/10" : "hover:text-white hover:bg-white/5"}`}
+              >
+                <span className="text-lg leading-none">🖼</span>{" "}
+                <span className="text-[12px] font-bold">Image</span>
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowVideoSelector(!showVideoSelector);
+                  setShowImageSelector(false);
+                  setShowTagSelector(false);
+                  setShowSchedulePicker(false);
+                }}
+                className={`p-2 transition-colors rounded-full flex items-center gap-1 ${showVideoSelector ? "text-white bg-white/10" : "hover:text-white hover:bg-white/5"}`}
+              >
+                <span className="text-lg leading-none">🎥</span>{" "}
+                <span className="text-[12px] font-bold">Video</span>
+              </button>
+            )}
             <button
               type="button"
               className="p-2 hover:text-white transition-colors rounded-full hover:bg-white/5 flex items-center gap-1"
