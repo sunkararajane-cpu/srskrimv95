@@ -469,9 +469,14 @@ export function SparkViewer({
     setActiveSheet(null);
     setReplyText("");
     if (spark) {
-      let savedList = JSON.parse(
-        localStorage.getItem("skrimchat_saved_sparks") || "[]",
-      );
+      let savedList = [];
+      try {
+        savedList = JSON.parse(
+          localStorage.getItem("skrimchat_saved_sparks") || "[]",
+        );
+      } catch (e) {
+        console.error("Failed to parse saved sparks:", e);
+      }
       if (!Array.isArray(savedList)) savedList = [];
       setIsSaved(savedList.includes(spark.id));
       if (onSparkViewed) onSparkViewed(spark.id);
@@ -714,7 +719,12 @@ export function SparkViewer({
 
   const handleOpenHighlightPicker = () => {
     let storedH = localStorage.getItem("skrimchat_highlights");
-    let hlList = storedH ? JSON.parse(storedH) : [];
+    let hlList = [];
+    try {
+      hlList = storedH ? JSON.parse(storedH) : [];
+    } catch (e) {
+      console.error("Failed to parse highlights in picker:", e);
+    }
     if (!Array.isArray(hlList)) hlList = [];
     setHighlights(hlList);
     setIsPaused(true);
@@ -748,6 +758,10 @@ export function SparkViewer({
   };
 
   const handleAddToHighlight = (hlId: string) => {
+    if (!spark) {
+      showToast("No active spark selected");
+      return;
+    }
     const hlIndex = highlights.findIndex((h) => h.id === hlId);
     if (hlIndex >= 0) {
       const updatedHl = { ...highlights[hlIndex] };
@@ -786,6 +800,10 @@ export function SparkViewer({
 
   const handleCreateHighlight = () => {
     if (!newHighlightName.trim()) return;
+    if (!spark) {
+      showToast("No active spark selected");
+      return;
+    }
     const highlightCopy = {
         ...spark,
         highlightId: `highlight_${Date.now()}`,
@@ -1594,7 +1612,13 @@ export function SparkViewer({
                         </div>
                       )}
                       <button
-                        onClick={() => setActiveSheet(isHighlightMode ? "highlight-options" : "options")}
+                        onClick={() => {
+                          if (group?.userId === "archive") {
+                            setActiveSheet("highlight-options");
+                          } else {
+                            setActiveSheet(isHighlightMode ? "highlight-options" : "options");
+                          }
+                        }}
                         className="p-1.5 rounded-full hover:bg-white/10 transition-colors drop-shadow-md"
                       >
                         <MoreVertical className="w-5 h-5 text-white" />
@@ -2045,6 +2069,29 @@ export function SparkViewer({
                             </div>
                           </div>
                         )}
+                      </div>
+                    </div>
+                  )}
+
+                  {isHighlightMode && group?.userId === "archive" && (
+                    <div
+                      className="w-full pb-safe-bottom z-30 transition-all duration-300 pointer-events-none shrink-0"
+                      style={{
+                        opacity: showUI ? 1 : 0,
+                        transform: showUI ? "translateY(0)" : "translateY(20px)",
+                        minHeight: "fit-content",
+                      }}
+                    >
+                      <div className="px-4 pb-4 pointer-events-auto flex justify-center">
+                        <button
+                          onClick={() => {
+                            handleOpenHighlightPicker();
+                          }}
+                          className="w-full max-w-xs flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-full bg-gradient-to-r from-[#B026FF] to-[#00F0FF] text-white hover:opacity-95 active:scale-[0.98] transition-all font-bold shadow-xl shadow-[#B026FF]/20"
+                        >
+                          <span className="text-xl leading-none">💜</span>
+                          <span className="text-sm tracking-wide">Add to Highlights</span>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -2689,7 +2736,7 @@ export function SparkViewer({
                         <span>💜</span> Add to Highlights
                       </h3>
                       <button
-                        onClick={() => setActiveSheet("options")}
+                        onClick={() => setActiveSheet(group?.userId === "archive" ? "highlight-options" : "options")}
                         className="p-1.5 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
                       >
                         <X className="w-5 h-5 text-white" />
@@ -2841,7 +2888,9 @@ export function SparkViewer({
                 {activeSheet === "highlight-options" && (
                   <div className="px-5 pb-8 flex flex-col gap-3">
                     <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-bold text-white text-lg">Highlight Options</h3>
+                      <h3 className="font-bold text-white text-lg">
+                        {group?.userId === "archive" ? "Archive Options" : "Highlight Options"}
+                      </h3>
                       <button
                         onClick={() => setActiveSheet(null)}
                         className="p-1.5 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
@@ -2850,15 +2899,27 @@ export function SparkViewer({
                       </button>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        setActiveSheet("delete-confirm");
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 active:scale-[0.98] transition-all font-semibold"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                      <span>Remove from Highlight</span>
-                    </button>
+                    {group?.userId === "archive" ? (
+                      <button
+                        onClick={() => {
+                          handleOpenHighlightPicker();
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-[#B026FF]/10 border border-[#B026FF]/20 text-[#B026FF] hover:bg-[#B026FF]/20 active:scale-[0.98] transition-all font-semibold"
+                      >
+                        <span className="text-lg leading-none">💜</span>
+                        <span>Add to Highlights</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setActiveSheet("delete-confirm");
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 active:scale-[0.98] transition-all font-semibold"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                        <span>Remove from Highlight</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => {

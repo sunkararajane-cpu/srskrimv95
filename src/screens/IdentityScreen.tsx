@@ -175,8 +175,13 @@ export default function IdentityScreen() {
     const fetchHighlights = () => {
       const storedH = localStorage.getItem('skrimchat_highlights');
       if (storedH) {
-        let parsed = JSON.parse(storedH);
-        if (!Array.isArray(parsed)) parsed = [];
+        let parsed = [];
+        try {
+          parsed = JSON.parse(storedH);
+          if (!Array.isArray(parsed)) parsed = [];
+        } catch (e) {
+          console.error("Failed to parse stored highlights in interval:", e);
+        }
         setHighlights(parsed);
       } else {
         setHighlights([]);
@@ -1671,7 +1676,13 @@ export default function IdentityScreen() {
                if (hlId) {
                  const storedH = localStorage.getItem('skrimchat_highlights');
                  if (storedH) {
-                   const parsed = JSON.parse(storedH);
+                   let parsed = [];
+                   try {
+                     parsed = JSON.parse(storedH);
+                     if (!Array.isArray(parsed)) parsed = [];
+                   } catch (e) {
+                     console.error("Failed to parse stored highlights:", e);
+                   }
                    const updated = parsed.map((h: any) => {
                      if (h.id === hlId) {
                        return { ...h, sparks: (h.sparks || []).filter((s: any) => s.id !== sparkId) };
