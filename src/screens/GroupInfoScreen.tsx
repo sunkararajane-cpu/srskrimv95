@@ -357,6 +357,60 @@ export default function GroupInfoScreen() {
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [addMemberSearch, setAddMemberSearch] = useState("");
 
+  const [announcements, setAnnouncements] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem(`group_announcements_${groupId || 'default'}`);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return [
+      {
+        id: "a1",
+        text: "Guys, remember the tournament starts at 8 PM tonight! Be online please.",
+        createdBy: "rajani",
+        role: "Admin",
+        createdAt: "Today, 10:45 AM",
+        memberCount: 4
+      },
+      {
+        id: "a2",
+        text: "Welcome to the Telugu Squad! Let's keep the vibes high.",
+        createdBy: "rajani",
+        role: "Admin",
+        createdAt: "Yesterday, 1:00 PM",
+        memberCount: 4
+      }
+    ];
+  });
+
+  const [newAnnouncementText, setNewAnnouncementText] = useState("");
+
+  // Save to localStorage when it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(`group_announcements_${groupId || 'default'}`, JSON.stringify(announcements));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [announcements, groupId]);
+
+  const handlePostAnnouncement = () => {
+    if (!newAnnouncementText.trim()) return;
+    const newAnn = {
+      id: "ann_" + Date.now(),
+      text: newAnnouncementText.trim(),
+      createdBy: "rajani",
+      role: "Admin",
+      createdAt: "Just now",
+      memberCount: members.length
+    };
+    setAnnouncements(prev => [newAnn, ...prev]);
+    setNewAnnouncementText("");
+  };
+
   // Tab Content Renders
   const renderInfoTab = () => (
     <div className="flex flex-col">
@@ -665,38 +719,71 @@ export default function GroupInfoScreen() {
 
   const renderAnnouncementsTab = () => (
     <div className="flex flex-col p-4 gap-4">
-      <div className="bg-[#1A1A2A] border-t-[3px] border-[#B026FF] rounded-xl overflow-hidden shadow-lg p-4 mb-2">
-        <div className="text-[#B026FF] text-[11px] font-black tracking-widest flex items-center gap-1.5 uppercase mb-3">
-          <span>📢</span> ANNOUNCEMENT
-        </div>
-        <div className="text-white font-bold text-[15px] whitespace-pre-wrap leading-relaxed mb-4">
-          Guys, remember the tournament starts at 8 PM tonight! Be online
-          please.
-        </div>
-        <div className="w-full h-px bg-white/10 mb-3" />
-        <div className="flex flex-col gap-1 text-[11px] text-white/50">
-          <div className="font-bold flex items-center gap-1 text-white/80">
-            👑 rajani · Admin
+      {/* Create Announcement Card for Admins */}
+      {group.isAdmin && (
+        <div className="bg-[#141420] border border-dashed border-[#B026FF]/40 rounded-xl p-4 flex flex-col gap-3 shadow-lg">
+          <div className="flex items-center gap-2 text-white font-bold text-sm">
+            <span className="text-base">📢</span> Create Announcement
           </div>
-          <div>Today, 10:45 AM · 4 members</div>
+          <textarea
+            value={newAnnouncementText}
+            onChange={(e) => setNewAnnouncementText(e.target.value)}
+            placeholder="Type your group announcement here..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-[#B026FF] placeholder:text-white/30 resize-none min-h-[80px]"
+            rows={3}
+          />
+          <div className="flex justify-between items-center mt-1">
+            <span className="text-white/40 text-[11px]">
+              Visible to all group members
+            </span>
+            <button
+              onClick={handlePostAnnouncement}
+              disabled={!newAnnouncementText.trim()}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#B026FF] to-[#00F0FF] text-white font-bold text-xs shadow-lg shadow-[#B026FF]/25 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none transition-all"
+            >
+              Post
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="bg-[#1A1A2A] border-t-[3px] border-white/20 rounded-xl overflow-hidden p-4 opacity-80">
-        <div className="text-white/50 text-[11px] font-black tracking-widest flex items-center gap-1.5 uppercase mb-3">
-          <span>📢</span> ANNOUNCEMENT
+      {/* Announcements List */}
+      {announcements.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center bg-[#101018] rounded-xl border border-white/5">
+          <span className="text-4xl mb-3">📢</span>
+          <p className="text-white/60 font-bold text-sm">No Announcements Yet</p>
+          <p className="text-white/40 text-xs mt-1 px-6">
+            Admins haven't posted any announcements to this group.
+          </p>
         </div>
-        <div className="text-white font-bold text-[15px] whitespace-pre-wrap leading-relaxed mb-4">
-          Welcome to the Telugu Squad! Let's keep the vibes high.
-        </div>
-        <div className="w-full h-px bg-white/10 mb-3" />
-        <div className="flex flex-col gap-1 text-[11px] text-white/50">
-          <div className="font-bold flex items-center gap-1 text-white/80">
-            👑 rajani · Admin
+      ) : (
+        announcements.map((ann, i) => (
+          <div
+            key={ann.id}
+            className={`bg-[#1A1A2A] border-t-[3px] rounded-xl overflow-hidden shadow-lg p-4 ${
+              i === 0 ? "border-[#B026FF]" : "border-white/20 opacity-90"
+            }`}
+          >
+            <div
+              className={`text-[11px] font-black tracking-widest flex items-center gap-1.5 uppercase mb-3 ${
+                i === 0 ? "text-[#B026FF]" : "text-white/50"
+              }`}
+            >
+              <span>📢</span> ANNOUNCEMENT
+            </div>
+            <div className="text-white font-bold text-[15px] whitespace-pre-wrap leading-relaxed mb-4">
+              {ann.text}
+            </div>
+            <div className="w-full h-px bg-white/10 mb-3" />
+            <div className="flex flex-col gap-1 text-[11px] text-white/50">
+              <div className="font-bold flex items-center gap-1 text-white/80">
+                👑 {ann.createdBy} · {ann.role}
+              </div>
+              <div>{ann.createdAt} · {ann.memberCount} members</div>
+            </div>
           </div>
-          <div>Yesterday, 1:00 PM · 4 members</div>
-        </div>
-      </div>
+        ))
+      )}
     </div>
   );
 
