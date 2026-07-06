@@ -19,6 +19,7 @@ import {
   Share2,
   X,
   Image,
+  Plus,
 } from "lucide-react";
 import { CHAT_THEMES } from "../constants/themes";
 import { MOCK_CHATS } from "../lib/mock/mockChatDirectory";
@@ -392,6 +393,136 @@ export default function GroupInfoScreen() {
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [addMemberSearch, setAddMemberSearch] = useState("");
 
+  const [polls, setPolls] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem(`group_polls_${groupId || 'default'}`);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return [
+      {
+        id: "p1",
+        question: "Which game should we play tonight?",
+        options: [
+          { id: "o1", text: "Snake", votes: ["Priya Sharma", "Rahul Verma"] },
+          { id: "o2", text: "Emoji Guess", votes: ["Kiran Reddy"] },
+          { id: "o3", text: "Kabaddi", votes: ["rajani (You)"] },
+        ],
+        endsIn: "Ends in 24h",
+        createdBy: "rajani",
+        role: "Admin"
+      }
+    ];
+  });
+
+  const [newPollQuestion, setNewPollQuestion] = useState("");
+  const [newPollOptions, setNewPollOptions] = useState<string[]>(["", ""]);
+
+  // Save polls to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(`group_polls_${groupId || 'default'}`, JSON.stringify(polls));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [polls, groupId]);
+
+  const handleVotePoll = (pollId: string, optionId: string) => {
+    setPolls(prevPolls => {
+      return prevPolls.map(p => {
+        if (p.id === pollId) {
+          const updatedOptions = p.options.map((o: any) => {
+            const hasVoted = o.votes.includes("rajani (You)");
+            if (o.id === optionId) {
+              if (hasVoted) {
+                return { ...o, votes: o.votes.filter((v: string) => v !== "rajani (You)") };
+              } else {
+                return { ...o, votes: [...o.votes, "rajani (You)"] };
+              }
+            } else {
+              // Remove vote from other options of same poll
+              return { ...o, votes: o.votes.filter((v: string) => v !== "rajani (You)") };
+            }
+          });
+          return { ...p, options: updatedOptions };
+        }
+        return p;
+      });
+    });
+  };
+
+  const handleCreatePoll = () => {
+    if (!newPollQuestion.trim()) return;
+    const validOptions = newPollOptions.filter(o => o.trim() !== "");
+    if (validOptions.length < 2) {
+      alert("Please provide at least 2 options for the poll.");
+      return;
+    }
+
+    const newPollObj = {
+      id: "p_" + Date.now(),
+      question: newPollQuestion.trim(),
+      options: validOptions.map((opt, idx) => ({
+        id: "o_" + idx + "_" + Date.now(),
+        text: opt.trim(),
+        votes: []
+      })),
+      endsIn: "Ends in 24h",
+      createdBy: "rajani",
+      role: "Admin"
+    };
+
+    setPolls(prev => [newPollObj, ...prev]);
+    setNewPollQuestion("");
+    setNewPollOptions(["", ""]);
+
+    // Also append a poll notification in the group chat history
+    try {
+      const activeChatId = groupId || "3"; // default to Telugu Squad
+      const chatKey = `skrimchat_messages_${activeChatId}`;
+      const storedMessagesStr = localStorage.getItem(chatKey);
+      let chatMessages: any[] = [];
+      if (storedMessagesStr) {
+        chatMessages = JSON.parse(storedMessagesStr);
+      } else {
+        chatMessages = [...MOCK_MESSAGES];
+      }
+
+      const pollMsg = {
+        id: "msg_poll_" + Date.now(),
+        sender: "them" as const, // align left like a received notification
+        senderName: "📊 GROUP POLL",
+        senderAvatar: group.avatar || "🔥",
+        senderIsAdmin: true,
+        text: `📊 NEW GROUP POLL:\n\n"${newPollQuestion.trim()}"\n\n- Created by rajani (Admin)`,
+        time: "Just now",
+        type: "poll" as const,
+        poll: {
+          question: newPollQuestion.trim(),
+          options: validOptions.map((opt, idx) => ({
+            id: idx.toString(),
+            text: opt.trim(),
+            votes: []
+          })),
+          multiSelect: false
+        },
+        status: "read" as const
+      };
+
+      chatMessages.push(pollMsg);
+      localStorage.setItem(chatKey, JSON.stringify(chatMessages));
+    } catch (err) {
+      console.error("Error writing poll to chat history:", err);
+    }
+  };
+
+  const handleDeletePoll = (pollId: string) => {
+    setPolls(prev => prev.filter(p => p.id !== pollId));
+  };
+
   const [announcements, setAnnouncements] = useState<any[]>(() => {
     try {
       const stored = localStorage.getItem(`group_announcements_${groupId || 'default'}`);
@@ -538,16 +669,18 @@ export default function GroupInfoScreen() {
           <span className="text-white/60 text-xs font-bold uppercase tracking-wider">
             Members ({members.length})
           </span>
-          <button
-            onClick={() => {
-              setSelectedContactIds([]);
-              setAddMemberSearch("");
-              setShowAddMember(true);
-            }}
-            className="text-[#00F0FF] text-xs font-medium flex items-center gap-1 hover:opacity-85"
-          >
-            <UserPlus size={14} /> Add
-          </button>
+          {group.isAdmin && (
+            <button
+              onClick={() => {
+                setSelectedContactIds([]);
+                setAddMemberSearch("");
+                setShowAddMember(true);
+              }}
+              className="text-[#00F0FF] text-xs font-medium flex items-center gap-1 hover:opacity-85"
+            >
+              <UserPlus size={14} /> Add
+            </button>
+          )}
         </div>
         <div className="flex flex-col gap-3">
           {members.slice(0, 3).map((m) => (
@@ -660,121 +793,349 @@ export default function GroupInfoScreen() {
     </div>
   );
 
-  const renderMembersTab = () => (
-    <div className="flex flex-col h-full bg-black mt-[1px]">
-      <div className="p-4 flex justify-between items-center border-b border-white/5">
-        <h4 className="text-white/60 text-xs font-bold uppercase tracking-wider">
-          Members ({members.length})
-        </h4>
-        <button 
-          onClick={() => {
-            setSelectedContactIds([]);
-            setAddMemberSearch("");
-            setShowAddMember(true);
-          }}
-          className="text-[#00F0FF] text-xs font-bold px-3 py-1.5 rounded-full bg-[#00F0FF]/10 flex items-center gap-1 hover:opacity-85 active:scale-95 transition-all"
-        >
-          <UserPlus size={14} /> Add
-        </button>
-      </div>
-      <div className="flex flex-col flex-1 overflow-y-auto pb-20">
-        {members.map((m) => (
-          <div
-            key={m.id}
-            className="flex items-center justify-between p-4 border-b border-white/5 hover:bg-white/5 transition-colors group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0 relative">
-                {m.name.charAt(0)}
-                {m.isOnline && (
-                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-black rounded-full" />
-                )}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-white font-medium flex items-center gap-1.5 text-[15px]">
-                  {m.name}{" "}
-                  {m.role === "Admin" && (
-                    <span className="bg-yellow-500/20 text-yellow-500 text-[9px] px-1.5 rounded uppercase font-bold tracking-wider pt-[1px] ml-1">
-                      Admin
-                    </span>
-                  )}
-                </span>
-                <span
-                  className={`text-[12px] ${m.isOnline ? "text-green-400" : "text-white/40"}`}
-                >
-                  {m.isOnline ? "Online now" : "Offline"}
-                </span>
-              </div>
-            </div>
-            {!m.isMe && (
-              <button
-                onClick={() => {
-                  setSelectedMember(m);
-                  setShowMemberActions(true);
-                }}
-                className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full"
-              >
-                <MoreVertical size={20} />
-              </button>
+  const renderMembersTab = () => {
+    const adminMembers = members.filter((m: any) => m.role === "Admin");
+    const regularMembers = members.filter((m: any) => m.role !== "Admin");
+
+    const renderMemberRow = (m: any) => (
+      <div
+        key={m.id}
+        className="flex items-center justify-between p-4 border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#B026FF]/20 to-[#00F0FF]/20 border border-white/10 flex items-center justify-center text-white font-bold text-base shrink-0 relative">
+            {m.name.charAt(0)}
+            {m.isOnline && (
+              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-black rounded-full" />
             )}
           </div>
-        ))}
-      </div>
-    </div>
-  );
+          <div className="flex flex-col min-w-0">
+            <span className="text-white font-medium flex items-center gap-1.5 text-[15px] truncate">
+              {m.name}
+              {m.isMe && (
+                <span className="text-[#00F0FF] text-[10px] bg-[#00F0FF]/10 px-1 py-0.5 rounded font-bold">
+                  You
+                </span>
+              )}
+              {m.role === "Admin" && (
+                <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider shrink-0">
+                  Admin
+                </span>
+              )}
+              {m.isMuted && (
+                <span className="bg-orange-500/10 text-orange-500 border border-orange-500/20 text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider shrink-0">
+                  Muted
+                </span>
+              )}
+            </span>
+            <span className={`text-[12px] ${m.isOnline ? "text-green-400" : "text-white/40"}`}>
+              {m.isOnline ? "Online now" : "Offline"}
+            </span>
+          </div>
+        </div>
+        
+        {/* Actions Row */}
+        {!m.isMe && group.isAdmin && (
+          <div className="flex items-center gap-1.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+            {/* Promote/Demote */}
+            <button
+              onClick={() => {
+                setShowConfirmAction({
+                  type: m.role === "Admin" ? "demote" : "promote",
+                  member: m,
+                });
+              }}
+              title={m.role === "Admin" ? "Dismiss as Admin" : "Make Admin"}
+              className={`p-2 rounded-xl border transition-all ${
+                m.role === "Admin"
+                  ? "bg-yellow-500/10 border-yellow-500/25 text-yellow-500 hover:bg-yellow-500/20"
+                  : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10 hover:border-white/25"
+              }`}
+            >
+              <Shield size={14} className={m.role === "Admin" ? "fill-yellow-500/20" : ""} />
+            </button>
 
-  const renderPollsTab = () => (
-    <div className="flex flex-col p-4 gap-4">
-      <div className="bg-[#1A1A24] border border-[#B026FF]/30 p-4 rounded-xl relative">
-        <div className="text-[10px] uppercase font-bold text-[#B026FF] mb-2 flex items-center gap-1.5 tracking-wider">
-          <span>📊</span> POLL
-        </div>
-        <div className="text-white font-bold mb-4">
-          "Which game should we play tonight?"
+            {/* Mute/Unmute */}
+            <button
+              onClick={() => {
+                setShowConfirmAction({
+                  type: m.isMuted ? "unmute" : "mute",
+                  member: m,
+                });
+              }}
+              title={m.isMuted ? "Unmute Member" : "Mute Member"}
+              className={`p-2 rounded-xl border transition-all ${
+                m.isMuted
+                  ? "bg-orange-500/10 border-orange-500/25 text-orange-500 hover:bg-orange-500/20"
+                  : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10 hover:border-white/25"
+              }`}
+            >
+              <Bell size={14} className={m.isMuted ? "fill-orange-500/10" : ""} />
+            </button>
+
+            {/* Remove */}
+            <button
+              onClick={() => {
+                setShowConfirmAction({
+                  type: "remove",
+                  member: m,
+                });
+              }}
+              title="Remove from Group"
+              className="p-2 bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-all"
+            >
+              <Trash2 size={14} />
+            </button>
+
+            {/* More menu */}
+            <button
+              onClick={() => {
+                setSelectedMember(m);
+                setShowMemberActions(true);
+              }}
+              className="p-2 bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 hover:border-white/25 rounded-xl transition-all"
+            >
+              <MoreVertical size={14} />
+            </button>
+          </div>
+        )}
+
+        {!m.isMe && !group.isAdmin && (
+          <button
+            onClick={() => {
+              setSelectedMember(m);
+              setShowMemberActions(true);
+            }}
+            className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full"
+          >
+            <MoreVertical size={20} />
+          </button>
+        )}
+      </div>
+    );
+
+    return (
+      <div className="flex flex-col h-full bg-black mt-[1px]">
+        {/* Top Header */}
+        <div className="p-4 flex justify-between items-center border-b border-white/5">
+          <h4 className="text-white/60 text-xs font-bold uppercase tracking-wider">
+            SQUAD MEMBERS ({members.length})
+          </h4>
+          {group.isAdmin && (
+            <button 
+              onClick={() => {
+                setSelectedContactIds([]);
+                setAddMemberSearch("");
+                setShowAddMember(true);
+              }}
+              className="text-[#00F0FF] text-xs font-bold px-3 py-1.5 rounded-full bg-[#00F0FF]/10 flex items-center gap-1 hover:opacity-85 active:scale-95 transition-all"
+            >
+              <UserPlus size={14} /> Add Friend
+            </button>
+          )}
         </div>
 
-        <div className="space-y-3 mb-4 text-sm font-medium">
-          <div className="w-full">
-            <div className="flex justify-between text-white/80 mb-1">
-              <span>🎮 Snake</span> <span>2 votes (50%)</span>
+        <div className="flex-1 overflow-y-auto pb-24">
+          {/* Admins Section */}
+          {adminMembers.length > 0 && (
+            <div className="mb-6">
+              <div className="px-4 py-2 bg-[#141414] border-y border-white/5 flex justify-between items-center">
+                <span className="text-yellow-500 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  👑 Admins ({adminMembers.length})
+                </span>
+                <span className="text-[10px] text-white/40 font-medium">Can moderate rules & settings</span>
+              </div>
+              <div className="divide-y divide-white/[0.02]">
+                {adminMembers.map(renderMemberRow)}
+              </div>
             </div>
-            <div className="w-full h-2 bg-white/10 rounded-full">
-              <div
-                className="h-full bg-neon-purple rounded-full"
-                style={{ width: "50%" }}
-              />
+          )}
+
+          {/* Members Section */}
+          {regularMembers.length > 0 && (
+            <div>
+              <div className="px-4 py-2 bg-[#141414] border-y border-white/5 flex justify-between items-center">
+                <span className="text-white/60 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  👤 Members ({regularMembers.length})
+                </span>
+                <span className="text-[10px] text-white/40 font-medium">Standard participants</span>
+              </div>
+              <div className="divide-y divide-white/[0.02]">
+                {regularMembers.map(renderMemberRow)}
+              </div>
             </div>
-          </div>
-          <div className="w-full">
-            <div className="flex justify-between text-white/80 mb-1">
-              <span>🎯 Emoji Guess</span> <span>1 vote (25%)</span>
-            </div>
-            <div className="w-full h-2 bg-white/10 rounded-full">
-              <div
-                className="h-full bg-neon-purple/60 rounded-full"
-                style={{ width: "25%" }}
-              />
-            </div>
-          </div>
-          <div className="w-full">
-            <div className="flex justify-between text-white/80 mb-1">
-              <span>🏏 Kabaddi</span> <span>1 vote (25%)</span>
-            </div>
-            <div className="w-full h-2 bg-white/10 rounded-full">
-              <div
-                className="h-full bg-neon-purple/60 rounded-full"
-                style={{ width: "25%" }}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="text-[11px] text-white/50 font-mono pt-3 border-t border-white/10 flex justify-between">
-          <span>4 total votes</span>
-          <span>Ends 24h</span>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const renderPollsTab = () => {
+    return (
+      <div className="flex flex-col p-4 gap-4 pb-24">
+        {/* Create Poll Card for Admins */}
+        {group.isAdmin && (
+          <div className="bg-[#141420] border border-dashed border-[#B026FF]/40 rounded-xl p-4 flex flex-col gap-3 shadow-lg mb-2">
+            <div className="flex items-center gap-2 text-white font-bold text-sm">
+              <span className="text-base">📊</span> Create Poll
+            </div>
+            
+            <div>
+              <label className="text-white/40 text-[10px] uppercase font-bold tracking-wider mb-1 block">Poll Question</label>
+              <input
+                type="text"
+                value={newPollQuestion}
+                onChange={(e) => setNewPollQuestion(e.target.value)}
+                placeholder="E.g. Which game should we play tonight?"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B026FF] placeholder:text-white/30"
+              />
+            </div>
+
+            <div>
+              <label className="text-white/40 text-[10px] uppercase font-bold tracking-wider mb-1.5 block">Options</label>
+              <div className="space-y-2">
+                {newPollOptions.map((option, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={option}
+                      onChange={(e) => {
+                        const updated = [...newPollOptions];
+                        updated[idx] = e.target.value;
+                        setNewPollOptions(updated);
+                      }}
+                      placeholder={`Option ${idx + 1}`}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#B026FF] placeholder:text-white/30"
+                    />
+                    {newPollOptions.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewPollOptions(newPollOptions.filter((_, i) => i !== idx));
+                        }}
+                        className="p-2 text-white/40 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
+                        title="Remove Option"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {newPollOptions.length < 5 && (
+                <button
+                  type="button"
+                  onClick={() => setNewPollOptions([...newPollOptions, ""])}
+                  className="text-[#00F0FF] text-xs font-bold mt-2 hover:opacity-80 active:scale-95 transition-all flex items-center gap-1"
+                >
+                  <Plus size={12} /> Add Option
+                </button>
+              )}
+            </div>
+
+            <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5">
+              <span className="text-white/40 text-[11px]">
+                Members can vote once per poll
+              </span>
+              <button
+                onClick={handleCreatePoll}
+                disabled={!newPollQuestion.trim() || newPollOptions.filter(o => o.trim()).length < 2}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#B026FF] to-[#00F0FF] text-white font-bold text-xs shadow-lg shadow-[#B026FF]/25 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none transition-all"
+              >
+                Launch Poll
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic Polls List */}
+        {polls.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-[#101018] rounded-xl border border-white/5">
+            <span className="text-4xl mb-3">📊</span>
+            <p className="text-white/60 font-bold text-sm">No Active Polls</p>
+            <p className="text-white/40 text-xs mt-1 px-6">
+              Admins haven't launched any polls in this group yet.
+            </p>
+          </div>
+        ) : (
+          polls.map((poll) => {
+            const totalVotes = poll.options.reduce((sum: number, o: any) => sum + o.votes.length, 0);
+            
+            return (
+              <div
+                key={poll.id}
+                className="bg-[#1A1A24] border border-white/5 p-4 rounded-xl relative"
+              >
+                {/* Admin Delete Action */}
+                {group.isAdmin && (
+                  <button
+                    onClick={() => handleDeletePoll(poll.id)}
+                    className="absolute top-4 right-4 text-white/30 hover:text-red-400 p-1.5 hover:bg-white/5 rounded-lg transition-all"
+                    title="Delete Poll"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+
+                <div className="text-[10px] uppercase font-bold text-[#B026FF] mb-2 flex items-center gap-1.5 tracking-wider">
+                  <span>📊</span> POLL · Created by {poll.createdBy}
+                </div>
+                <div className="text-white font-bold mb-4 pr-6">
+                  "{poll.question}"
+                </div>
+
+                <div className="space-y-3 mb-4 text-sm font-medium">
+                  {poll.options.map((option: any) => {
+                    const votesCount = option.votes.length;
+                    const percentage = totalVotes > 0 ? Math.round((votesCount / totalVotes) * 100) : 0;
+                    const hasVoted = option.votes.includes("rajani (You)");
+
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => handleVotePoll(poll.id, option.id)}
+                        className={`w-full text-left p-2.5 rounded-xl border transition-all relative overflow-hidden flex flex-col justify-center ${
+                          hasVoted
+                            ? "bg-[#B026FF]/10 border-[#B026FF]/50 text-white"
+                            : "bg-white/5 border-white/5 text-white/80 hover:bg-white/10 hover:border-white/10"
+                        }`}
+                      >
+                        {/* Vote bar overlay background */}
+                        <div
+                          className="absolute left-0 top-0 bottom-0 bg-[#B026FF]/15 transition-all duration-500 ease-out z-0 pointer-events-none"
+                          style={{ width: `${percentage}%` }}
+                        />
+
+                        <div className="flex justify-between items-center w-full z-10">
+                          <span className="flex items-center gap-1.5">
+                            {option.text}
+                            {hasVoted && (
+                              <span className="text-[10px] font-bold text-[#00F0FF] bg-[#00F0FF]/10 px-1.5 py-0.5 rounded-full uppercase">
+                                My Vote
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-xs text-white/60 font-mono">
+                            {votesCount} {votesCount === 1 ? "vote" : "votes"} ({percentage}%)
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <div className="text-[11px] text-white/50 font-mono pt-3 border-t border-white/10 flex justify-between">
+                  <span>{totalVotes} {totalVotes === 1 ? "total vote" : "total votes"}</span>
+                  <span>{poll.endsIn}</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    );
+  };
 
   const renderVibesTab = () => (
     <div className="flex flex-col p-4 gap-4">
@@ -1033,7 +1394,7 @@ export default function GroupInfoScreen() {
                 {group.isAdmin && (
                   <>
                     <div className="h-px w-full bg-white/5 my-2" />
-                    {selectedMember.role !== "Admin" && (
+                    {selectedMember.role !== "Admin" ? (
                       <button
                         onClick={() => {
                           setShowMemberActions(false);
@@ -1044,14 +1405,37 @@ export default function GroupInfoScreen() {
                         }}
                         className="w-full bg-white/5 rounded-xl px-4 py-3.5 text-white flex items-center gap-3 hover:bg-white/10 transition"
                       >
-                        <Shield size={18} className="text-yellow-500" /> Make
-                        Admin
+                        <Shield size={18} className="text-yellow-500" /> Make Admin
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setShowMemberActions(false);
+                          setShowConfirmAction({
+                            type: "demote",
+                            member: selectedMember,
+                          });
+                        }}
+                        className="w-full bg-white/5 rounded-xl px-4 py-3.5 text-white flex items-center gap-3 hover:bg-white/10 transition"
+                      >
+                        <Shield size={18} className="text-red-400" /> Dismiss as Admin
                       </button>
                     )}
-                    <button className="w-full bg-white/5 rounded-xl px-4 py-3.5 text-white flex items-center gap-3 hover:bg-white/10 transition">
-                      <Bell size={18} className="text-orange-400" /> Mute in
-                      Group
+                    
+                    <button
+                      onClick={() => {
+                        setShowMemberActions(false);
+                        setShowConfirmAction({
+                          type: selectedMember.isMuted ? "unmute" : "mute",
+                          member: selectedMember,
+                        });
+                      }}
+                      className="w-full bg-white/5 rounded-xl px-4 py-3.5 text-white flex items-center gap-3 hover:bg-white/10 transition"
+                    >
+                      <Bell size={18} className={selectedMember.isMuted ? "text-green-400" : "text-orange-400"} />
+                      {selectedMember.isMuted ? "Unmute in Group" : "Mute in Group"}
                     </button>
+                    
                     <button
                       onClick={() => {
                         setShowMemberActions(false);
@@ -1092,7 +1476,7 @@ export default function GroupInfoScreen() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative z-50 bg-[#1A1A24] border border-white/10 w-full max-w-[320px] rounded-2xl p-6 flex flex-col items-center text-center shadow-2xl"
             >
-              {showConfirmAction.type === "promote" ? (
+              {showConfirmAction.type === "promote" && (
                 <>
                   <div className="w-12 h-12 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center mb-4">
                     <Shield size={24} />
@@ -1127,7 +1511,120 @@ export default function GroupInfoScreen() {
                     </button>
                   </div>
                 </>
-              ) : (
+              )}
+
+              {showConfirmAction.type === "demote" && (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mb-4">
+                    <Shield size={24} />
+                  </div>
+                  <h3 className="text-white font-bold text-lg mb-2">
+                    Dismiss {showConfirmAction.member.name.split(" ")[0]} as admin?
+                  </h3>
+                  <p className="text-white/60 text-sm mb-6">
+                    They will lose admin privileges and become a regular member.
+                  </p>
+                  <div className="flex w-full gap-3">
+                    <button
+                      onClick={() => setShowConfirmAction(null)}
+                      className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMembers((prev) =>
+                          prev.map((m) =>
+                            m.id === showConfirmAction.member.id
+                              ? { ...m, role: "Member" }
+                              : m,
+                          ),
+                        );
+                        setShowConfirmAction(null);
+                      }}
+                      className="flex-1 bg-red-500 hover:bg-red-400 text-white font-bold py-3 rounded-xl transition"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {showConfirmAction.type === "mute" && (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-orange-500/20 text-orange-500 flex items-center justify-center mb-4">
+                    <Bell size={24} />
+                  </div>
+                  <h3 className="text-white font-bold text-lg mb-2">
+                    Mute {showConfirmAction.member.name.split(" ")[0]}?
+                  </h3>
+                  <p className="text-white/60 text-sm mb-6">
+                    They will be muted from sending messages in the group chat.
+                  </p>
+                  <div className="flex w-full gap-3">
+                    <button
+                      onClick={() => setShowConfirmAction(null)}
+                      className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMembers((prev) =>
+                          prev.map((m) =>
+                            m.id === showConfirmAction.member.id
+                              ? { ...m, isMuted: true }
+                              : m,
+                          ),
+                        );
+                        setShowConfirmAction(null);
+                      }}
+                      className="flex-1 bg-orange-500 hover:bg-orange-400 text-black font-bold py-3 rounded-xl transition"
+                    >
+                      Mute
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {showConfirmAction.type === "unmute" && (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center mb-4">
+                    <Bell size={24} />
+                  </div>
+                  <h3 className="text-white font-bold text-lg mb-2">
+                    Unmute {showConfirmAction.member.name.split(" ")[0]}?
+                  </h3>
+                  <p className="text-white/60 text-sm mb-6">
+                    They will be allowed to send messages in the group chat again.
+                  </p>
+                  <div className="flex w-full gap-3">
+                    <button
+                      onClick={() => setShowConfirmAction(null)}
+                      className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMembers((prev) =>
+                          prev.map((m) =>
+                            m.id === showConfirmAction.member.id
+                              ? { ...m, isMuted: false }
+                              : m,
+                          ),
+                        );
+                        setShowConfirmAction(null);
+                      }}
+                      className="flex-1 bg-green-500 hover:bg-green-400 text-black font-bold py-3 rounded-xl transition"
+                    >
+                      Unmute
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {showConfirmAction.type === "remove" && (
                 <>
                   <div className="w-12 h-12 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mb-4">
                     <LogOut size={24} />
@@ -1136,7 +1633,10 @@ export default function GroupInfoScreen() {
                     Remove {showConfirmAction.member.name.split(" ")[0]} from{" "}
                     {group.name}?
                   </h3>
-                  <div className="flex w-full gap-3 mt-4">
+                  <p className="text-white/60 text-sm mb-6">
+                    They will be removed from this squad completely.
+                  </p>
+                  <div className="flex w-full gap-3">
                     <button
                       onClick={() => setShowConfirmAction(null)}
                       className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl transition"

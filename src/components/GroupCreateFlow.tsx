@@ -59,6 +59,7 @@ export function GroupCreateFlow({ onClose, onGroupCreated }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [initialAdminIds, setInitialAdminIds] = useState<string[]>([]);
   
   // Step 2 state
   const [groupName, setGroupName] = useState('');
@@ -82,10 +83,19 @@ export function GroupCreateFlow({ onClose, onGroupCreated }: Props) {
   const toggleMember = (id: string) => {
     if (selectedIds.includes(id)) {
       setSelectedIds(selectedIds.filter(x => x !== id));
+      setInitialAdminIds(initialAdminIds.filter(x => x !== id));
     } else {
       if (selectedIds.length < 256) {
          setSelectedIds([...selectedIds, id]);
       }
+    }
+  };
+
+  const toggleInitialAdmin = (id: string) => {
+    if (initialAdminIds.includes(id)) {
+      setInitialAdminIds(initialAdminIds.filter(x => x !== id));
+    } else {
+      setInitialAdminIds([...initialAdminIds, id]);
     }
   };
 
@@ -97,11 +107,34 @@ export function GroupCreateFlow({ onClose, onGroupCreated }: Props) {
        setIsCreating(false);
        setStep(3); // Success
        setTimeout(() => {
+          const creatorMember = {
+            id: "me",
+            name: "rajani (You)",
+            role: "Admin",
+            isMe: true,
+            isOnline: true
+          };
+
+          const mappedMembers = selectedIds.map((mid: string) => {
+            const contact = MOCK_CONTACTS.find(c => c.id === mid) || { name: mid, online: false };
+            const isAdmin = initialAdminIds.includes(mid);
+            return {
+              id: mid,
+              name: contact.name,
+              role: isAdmin ? "Admin" : "Member",
+              isMe: false,
+              isOnline: contact.online
+            };
+          });
+
+          const membersWithRoles = [creatorMember, ...mappedMembers];
+
           onGroupCreated({
              name: groupName || 'New Group',
              avatar: avatar ? `https://ui-avatars.com/api/?name=${avatar.emoji}&background=random&color=fff` : 'https://api.dicebear.com/7.x/shapes/svg?seed=' + Math.random(),
              emojiAvatar: avatar,
              members: selectedIds,
+             membersWithRoles: membersWithRoles,
              description: groupDescription,
              adminRules: adminRules
           });
@@ -303,14 +336,66 @@ export function GroupCreateFlow({ onClose, onGroupCreated }: Props) {
                </div>
 
                <div>
-                 <label className="text-xs text-white/50 font-bold tracking-wider mb-2 block">MEMBERS ({selectedIds.length + 1})</label>
-                 <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-wrap gap-2 text-sm">
-                    {selectedIds.slice(0, 5).map(id => {
+                 <div className="flex justify-between items-center mb-2">
+                   <label className="text-xs text-white/50 font-bold tracking-wider uppercase block">
+                     Squad Members & Roles ({selectedIds.length + 1})
+                   </label>
+                   <span className="text-[10px] text-neon-purple font-semibold uppercase">
+                     Tap crown to assign Admin role
+                   </span>
+                 </div>
+                 <div className="bg-[#12121B] border border-white/5 rounded-2xl p-3 space-y-3 max-h-60 overflow-y-auto no-scrollbar">
+                    {/* You (Owner) */}
+                    <div className="flex items-center justify-between py-1 border-b border-white/[0.03]">
+                       <div className="flex items-center gap-3">
+                          <div className="relative">
+                             <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=me`} className="w-8 h-8 rounded-full bg-white/10 border border-neon-purple/30" />
+                             <div className="absolute -top-1 -right-1 bg-yellow-500 text-black p-0.5 rounded-full" style={{ fontSize: '8px' }}>
+                               👑
+                             </div>
+                          </div>
+                          <div>
+                             <span className="text-sm font-semibold text-white">You</span>
+                             <span className="text-[10px] text-white/40 block">Group Owner</span>
+                          </div>
+                       </div>
+                       <span className="px-2 py-0.5 rounded-full bg-neon-purple/20 border border-neon-purple/40 text-[9px] font-bold text-neon-purple flex items-center gap-1 shrink-0">
+                          <Crown size={8} className="text-yellow-400" /> Owner
+                       </span>
+                    </div>
+
+                    {/* Selected Friends with Role Toggle */}
+                    {selectedIds.map(id => {
                        const contact = MOCK_CONTACTS.find(c => c.id === id);
-                       return <span key={id} className="text-white">👤 {contact?.name.split(' ')[0]}</span>
+                       if (!contact) return null;
+                       const isAdmin = initialAdminIds.includes(id);
+                       return (
+                          <div key={id} className="flex items-center justify-between py-1 border-b border-white/[0.03] last:border-0 last:pb-0">
+                             <div className="flex items-center gap-3 min-w-0">
+                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${contact.id}`} className="w-8 h-8 rounded-full bg-white/10 shrink-0" />
+                                <div className="min-w-0">
+                                   <span className="text-sm font-medium text-white truncate block">{contact.name}</span>
+                                   <span className="text-[9px] text-white/40 block truncate">
+                                      {isAdmin ? 'Can edit settings & manage members' : 'Can chat & view details'}
+                                   </span>
+                                </div>
+                             </div>
+                             
+                             <button
+                                type="button"
+                                onClick={() => toggleInitialAdmin(id)}
+                                className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 shrink-0 ${
+                                   isAdmin 
+                                      ? 'bg-yellow-500/15 border border-yellow-500/40 text-yellow-500 hover:bg-yellow-500/25' 
+                                      : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                                }`}
+                             >
+                                <Crown size={10} className={isAdmin ? 'text-yellow-400 fill-yellow-400/20' : 'text-white/40'} />
+                                {isAdmin ? 'Admin' : 'Member'}
+                             </button>
+                          </div>
+                       );
                     })}
-                    {selectedIds.length > 5 && <span className="text-white/50">+{selectedIds.length - 5} more</span>}
-                    <span className="text-neon-purple font-medium">+ you (admin)</span>
                  </div>
                </div>
 
